@@ -67,7 +67,7 @@ def get_color_map(filename):
 	colormap['violet']      = (colorlist[9],9)
 	return colorlist,colormap
 
-def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, output_file='surface_particles.txt'):
+def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, dat_file=None, output_file='surface_particles.txt'):
 	"""
 	输入参数：
 	[1] fig  
@@ -86,7 +86,8 @@ def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, output_file=
 		 0.00 0.00 1.00 
 		 0.00 1.00 1.00 
 		 1.00 0.00 1.00]
-	[7] output_file 输出文件名，默认为'surface_particles.txt'
+	[7] dat_file dat文件名（可选）
+	[8] output_file 输出文件名，默认为'surface_particles.txt'
 	"""
 	
 	ww = BALLRadN1*2.0
@@ -110,24 +111,45 @@ def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, output_file=
 								linestyles='solid')
 	ax.add_collection(circles)
 	
+	# 如果提供了dat文件名，则在data目录下生成对应的输出文件
+	if dat_file:
+		# 获取当前工作目录
+		current_dir = os.getcwd()
+		
+		# 确保data目录存在
+		data_dir = os.path.join(current_dir, 'data')
+		try:
+			os.makedirs(data_dir, exist_ok=True)
+		except Exception as e:
+			print(f"创建目录失败: {str(e)}")
+			return
+		
+		# 从dat文件名生成输出文件名
+		base_name = os.path.splitext(os.path.basename(dat_file))[0]
+		output_file = os.path.join(data_dir, f'{base_name}_particles.txt')
+		print(f"\n将在以下位置生成颗粒信息文件: {output_file}")
+	
 	# 输出颗粒信息到文件，格式符合Conservation_Layer.py中read_surface_particles函数的要求
 	if output_file:
-		with open(output_file, 'w', encoding='utf-8') as f:
-			f.write("表面颗粒信息:\n")
-			f.write("序号\tX坐标\tY坐标\t半径\t颜色编号\n")
-			f.write("-" * 50 + "\n")
+		try:
+			with open(output_file, 'w', encoding='utf-8') as f:
+				f.write("表面颗粒信息:\n")
+				f.write("序号\tX坐标\tY坐标\t半径\t颜色编号\n")
+				f.write("-" * 50 + "\n")
+				
+				for i in range(BALLxyN2.shape[0]):
+					x = BALLxyN2[i, 0]
+					y = BALLxyN2[i, 1]
+					radius = BALLRadN1[i, 0]
+					color = BALLColorN1[i, 0]
+					f.write(f"{i}\t{x:.2f}\t{y:.2f}\t{radius:.2f}\t{int(color)}\n")
+				
+				f.write("-" * 50 + "\n")
+				f.write(f"表面颗粒总数: {BALLxyN2.shape[0]}\n")
 			
-			for i in range(BALLxyN2.shape[0]):
-				x = BALLxyN2[i, 0]
-				y = BALLxyN2[i, 1]
-				radius = BALLRadN1[i, 0]
-				color = BALLColorN1[i, 0]
-				f.write(f"{i}\t{x:.2f}\t{y:.2f}\t{radius:.2f}\t{int(color)}\n")
-			
-			f.write("-" * 50 + "\n")
-			f.write(f"表面颗粒总数: {BALLxyN2.shape[0]}\n")
-		
-		print(f"\n颗粒信息已保存到 {output_file}")
+			print(f"颗粒信息已保存到 {output_file}")
+		except Exception as e:
+			print(f"写入文件失败: {str(e)}")
 
 def search_domain(WALLP1P2xyxyN4, BALLxyN2, BALLRad):
 
@@ -179,10 +201,14 @@ def search_domain_ball(BALLxyN2, BALLRad):
 	
 def plot_wall(fig, ax, WALLP1P2xyxyN4, ColorList,linewidth=1):
 
-	WALLsegs=[np.row_stack([P1P2xyxy[0,0:2], P1P2xyxy[0,2:4]]) for P1P2xyxy in WALLP1P2xyxyN4 ]
-	#set color
-#	colors = [mcolors.to_rgba(c) 
-#          for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
+	WALLsegs = []
+	for i in range(WALLP1P2xyxyN4.shape[0]):
+		# 从P1P2xyxy中提取P1和P2的坐标
+		P1 = np.array([float(WALLP1P2xyxyN4[i, 0]), float(WALLP1P2xyxyN4[i, 1])])
+		P2 = np.array([float(WALLP1P2xyxyN4[i, 2]), float(WALLP1P2xyxyN4[i, 3])])
+		# 创建一个2x2的数组，每行包含一个点的坐标
+		seg = np.array([P1, P2])
+		WALLsegs.append(seg)
 
 	wallNum=WALLP1P2xyxyN4.shape[0]
 	#print("wallNum",wallNum)
@@ -330,7 +356,7 @@ def Id1Id2ToIndex1Index2(BALLIdN1,Id1Id2N2):
 	#	BONDID2index=np.where(BALLIdN1==BONDId2)[-1]
 	# 修改后
 	bondnum=Id1Id2N2.shape[0]
-	Id1Id2indexN2=np.mat(np.zeros_like(Id1Id2N2,dtype=int)) # nx2
+	Id1Id2indexN2=np.asmatrix(np.zeros_like(Id1Id2N2,dtype=int)) # nx2
 	for i in np.arange(bondnum):
 		id1id2=Id1Id2N2[i,:].T #取出一个bond， [id1, id2]
 		index1index2 = np.where(BALLIdN1==id1id2)[-1]

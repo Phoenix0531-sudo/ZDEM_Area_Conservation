@@ -1,0 +1,25 @@
+# 此为注释 – 将被 Git 忽略
+#2019-03-17
+# LI Changsheng @ Nanjing University
+
+# 忽略目录及其下的所有目录及文件
+__pycache__/
+.idea/
+data/
+res/
+example/
+
+# 忽略特定类型的文件
+*.[pyc]
+*[~]
+\*~
+*~
+*pyc
+
+# 忽略构建目录
+build/
+dist/
+
+# 忽略临时文件
+.gitignore~
+

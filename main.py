@@ -52,13 +52,14 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
 #logging.basicConfig(level=logging.INFO)
 #创建一个logger日志对象
 logger = logging.getLogger('test_logger')
-logger.setLevel(logging.WARNING)  #设置默认的日志级别 CRITICAL > ERROR > WARNING > INFO > DEBUG
+logger.setLevel(logging.DEBUG)  #设置默认的日志级别 CRITICAL > ERROR > WARNING > INFO > DEBUG
 #创建StreamHandler对象
 sh = logging.StreamHandler()
 #StreamHandler对象自定义日志级别
-sh.setLevel(logging.INFO)
+sh.setLevel(logging.DEBUG)
 #StreamHandler对象自定义日志格式
-#sh.setFormatter(formatter)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+sh.setFormatter(formatter)
 sh.flush()
 logger.addHandler(sh)  #logger日志对象加载StreamHandler对象
 
@@ -229,7 +230,15 @@ def read_and_gen_fig(file):
 	#	ax = subplot(111,aspect='equal')
 		axball=plt.gca()
 		#bleft,bright,bbottom,btop = zdemplot.plot_ball(fig,ax,Ball,ColorList)
-		zdemplot.plot_ball(figball,axball,BALLxyN2, BALLRadN1, BALLColor, ColorList)
+		print(f"开始处理文件: {file}")
+		try:
+			# 获取绝对路径
+			abs_file = os.path.abspath(file)
+			print(f"文件的绝对路径: {abs_file}")
+			zdemplot.plot_ball(figball,axball,BALLxyN2, BALLRadN1, BALLColor, ColorList, dat_file=abs_file)
+			print(f"完成处理文件: {file}")
+		except Exception as e:
+			print(f"处理文件 {file} 时出错: {str(e)}")
 		#print(wbleft,wbright,wbbottom,wbtop )
 		
 		#print('wallshow',wallshow)
@@ -325,9 +334,14 @@ max_workers=min(max_workers,len(VBOXfile))
 print("parallel num:",max_workers)
 print("file num:",len(VBOXfile))
 if __name__ == '__main__' :
-	with ProcessPoolExecutor(max_workers=max_workers) as executor:
-		VBOXfileList= VBOXfile
-		allnum=executor.map(read_and_gen_fig, VBOXfileList)
+	# 暂时禁用多进程，改用单进程模式
+	print("使用单进程模式进行测试")
+	for file in VBOXfile:
+		read_and_gen_fig(file)
+	
+	# with ProcessPoolExecutor(max_workers=max_workers) as executor:
+	# 	VBOXfileList= VBOXfile
+	# 	allnum=executor.map(read_and_gen_fig, VBOXfileList)
 
 #test
 #for file in VBOXfile:

@@ -243,3 +243,4 @@ pip3 install pyDes
 
 
 
+ python main.py --dir=./data --surfaceshow=true --dpi=300 --pagesize=14

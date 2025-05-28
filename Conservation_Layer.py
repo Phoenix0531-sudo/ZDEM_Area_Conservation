@@ -4,6 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation
 import re
 import sys
+from matplotlib.patches import Circle  # 添加Circle导入
+import matplotlib as mpl
+
+# 设置中文字体
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 
 # 导入zdemplot.py中的函数
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -215,8 +221,10 @@ def calculate_triangle_areas(tri, coords):
     for triangle in triangles:
         p1, p2, p3 = coords_array[triangle[0]], coords_array[triangle[1]], coords_array[triangle[2]]
         
-        # 计算三角形面积（使用叉积）
-        area = 0.5 * abs(np.cross(p2 - p1, p3 - p1))
+        # 修改为使用3D向量计算面积
+        v1 = np.array([p2[0] - p1[0], p2[1] - p1[1], 0])
+        v2 = np.array([p3[0] - p1[0], p3[1] - p1[1], 0])
+        area = 0.5 * np.linalg.norm(np.cross(v1, v2))
         total_area += area
     
     return total_area
@@ -282,19 +290,144 @@ def process_surface_particles(threshold_factor=THRESHOLD_FACTOR):
     
     return 0.0
 
+def process_multiple_files(data_dir="data"):
+    """处理data目录下的所有_particles.txt文件"""
+    results = []
+    
+    # 获取data目录的绝对路径
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_dir)
+    
+    # 确保目录存在
+    if not os.path.exists(data_dir):
+        print(f"错误: 目录 '{data_dir}' 不存在")
+        return results
+    
+    # 查找所有_particles.txt文件
+    particle_files = [f for f in os.listdir(data_dir) if f.endswith('_particles.txt')]
+    
+    if not particle_files:
+        print(f"在 {data_dir} 中没有找到任何_particles.txt文件")
+        return results
+    
+    # 按文件名排序
+    particle_files.sort()
+    
+    # 处理每个文件
+    for file_name in particle_files:
+        file_path = os.path.join(data_dir, file_name)
+        print(f"\n处理文件: {file_name}")
+        
+        # 读取表面颗粒数据
+        coords, radii, colors = read_surface_particles(file_path)
+        
+        if coords is None or coords.shape[0] == 0:
+            print(f"在 {file_name} 中没有找到有效的表面颗粒数据")
+            continue
+        
+        # 确保COLOR_TO_EXTRACT是列表
+        color_list = COLOR_TO_EXTRACT if isinstance(COLOR_TO_EXTRACT, list) else [COLOR_TO_EXTRACT]
+        
+        # 筛选指定颜色的颗粒
+        color_indices = []
+        for i in range(colors.shape[0]):
+            if colors[i, 0] in color_list:
+                color_indices.append(i)
+        
+        if not color_indices:
+            print(f"在 {file_name} 中没有找到颜色为{color_list}的颗粒")
+            continue
+        
+        # 提取对应颗粒的坐标和半径
+        filtered_coords = np.array([coords[i] for i in color_indices])
+        filtered_radii = np.array([radii[i] for i in color_indices])
+        
+        print(f"筛选出{len(color_indices)}个颜色为{color_list}的颗粒")
+        
+        # 创建三角网格
+        tri = create_triangulation(filtered_coords)
+        
+        if tri is not None:
+            # 保存原始三角网格
+            original_tri = tri
+            
+            # 过滤三角形
+            filtered_tri = filter_triangles(tri, filtered_coords, filtered_radii, THRESHOLD_FACTOR)
+            
+            if filtered_tri is not None:
+                # 计算总面积
+                total_area = calculate_triangle_areas(filtered_tri, filtered_coords)
+                
+                # 保存结果
+                results.append({
+                    'file_name': file_name,
+                    'total_particles': len(color_indices),
+                    'area': total_area,
+                    'coords': filtered_coords,
+                    'radii': filtered_radii,
+                    'original_tri': original_tri,  # 保存原始三角网格
+                    'tri': filtered_tri
+                })
+                
+                # 将面积精度调整为千位
+                rounded_area = round(float(total_area), -3)
+                print(f"总面积: {rounded_area:.0f} 平方单位")
+    
+    return results
+
+def compare_results(results):
+    """比较不同文件的结果"""
+    if not results:
+        print("没有可比较的结果")
+        return
+    
+    print("\n=== 结果比较 ===")
+    print("文件名\t\t颗粒数量\t面积(平方单位)")
+    print("-" * 50)
+    
+    for result in results:
+        rounded_area = round(float(result['area']), -3)
+        print(f"{result['file_name']}\t{result['total_particles']}\t{rounded_area:.0f}")
+    
+    # 计算变化率
+    if len(results) >= 2:
+        first_area = float(results[0]['area'])
+        last_area = float(results[-1]['area'])
+        area_change = ((last_area - first_area) / first_area) * 100
+        
+        print("\n=== 变化分析 ===")
+        print(f"面积变化率: {area_change:.2f}%")
+        
+        first_particles = results[0]['total_particles']
+        last_particles = results[-1]['total_particles']
+        particle_change = ((last_particles - first_particles) / first_particles) * 100
+        print(f"颗粒数量变化率: {particle_change:.2f}%")
+
 def main():
-    # 处理表面颗粒数据
-    area = process_surface_particles()
+    # 处理多个文件
+    results = process_multiple_files()
     
-    # 确保COLOR_TO_EXTRACT是列表
-    color_list = COLOR_TO_EXTRACT if isinstance(COLOR_TO_EXTRACT, list) else [COLOR_TO_EXTRACT]
+    # 比较结果
+    compare_results(results)
     
-    if area > 0:
-        # 将面积精度调整为千位
-        rounded_area = round(area, -3)
-        print(f"\n颜色为{color_list}的颗粒面积计算结果: {rounded_area:.0f} 平方单位")
-    else:
-        print(f"\n没有找到任何颜色为{color_list}的有效颗粒数据进行面积计算")
+    # 为每个文件绘制图形
+    for result in results:
+        file_name = result['file_name']
+        print(f"\n正在绘制 {file_name} 的图形...")
+        
+        # 绘制颗粒分布
+        plot_particles(result['coords'], result['radii'], 
+                      f"颜色为{COLOR_TO_EXTRACT}的颗粒分布 ({file_name})")
+        
+        # 绘制原始三角网格
+        plot_triangulation(result['original_tri'], result['coords'], result['radii'],
+                          f"原始三角网格划分 ({file_name})")
+        
+        # 绘制过滤后的三角网格
+        plot_triangulation(result['tri'], result['coords'], result['radii'],
+                          f"过滤后的三角网格划分 ({file_name})")
+    
+    # 显示所有图形
+    plt.show()
 
 if __name__ == "__main__":
     main()
