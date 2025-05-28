@@ -384,23 +384,27 @@ def compare_results(results):
     print("文件名\t\t颗粒数量\t面积(平方单位)")
     print("-" * 50)
     
-    for result in results:
+    # 按文件名中的时间步排序
+    sorted_results = sorted(results, key=lambda x: int(''.join(filter(str.isdigit, x['file_name']))))
+    
+    for result in sorted_results:
         rounded_area = round(float(result['area']), -3)
         print(f"{result['file_name']}\t{result['total_particles']}\t{rounded_area:.0f}")
     
-    # 计算变化率
-    if len(results) >= 2:
-        first_area = float(results[0]['area'])
-        last_area = float(results[-1]['area'])
+    # 计算变化率（从时间步最小的到最大的）
+    if len(sorted_results) >= 2:
+        first_area = float(sorted_results[0]['area'])
+        last_area = float(sorted_results[-1]['area'])
         area_change = ((last_area - first_area) / first_area) * 100
         
         print("\n=== 变化分析 ===")
-        print(f"面积变化率: {area_change:.2f}%")
+        print(f"从 {sorted_results[0]['file_name']} 到 {sorted_results[-1]['file_name']}")
+        print(f"面积变化率: {area_change:+.2f}%")  # 添加+号以显示正负
         
-        first_particles = results[0]['total_particles']
-        last_particles = results[-1]['total_particles']
+        first_particles = sorted_results[0]['total_particles']
+        last_particles = sorted_results[-1]['total_particles']
         particle_change = ((last_particles - first_particles) / first_particles) * 100
-        print(f"颗粒数量变化率: {particle_change:.2f}%")
+        print(f"颗粒数量变化率: {particle_change:+.2f}%")  # 添加+号以显示正负
 
 def main():
     # 处理多个文件
