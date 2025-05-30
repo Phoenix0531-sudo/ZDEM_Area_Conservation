@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+2025/05/30
+包羡钧 @ 东华理工大学
+功能：
+计算颗粒分布的面积守恒性
+"""
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-2019/01/07
-李长圣 @ 南京大学
+2024/03/21
 功能：
 绘制颗粒及墙体
 """
@@ -23,26 +22,18 @@ from matplotlib.lines import Line2D
 
 def get_color_map(filename):
 	"""
-	2018/05/28
-	LI ChangSheng @ nanyang technological university
-	use：
-	get the color map of colorfile
-
-	input：
-	[1]ColorFileName
-	output：
-	[] colorlist  
+	获取颜色映射
+	输入：
+	[1] ColorFileName - 颜色文件名
+	输出：
+	[1] colorlist - 颜色列表
 	colorlist[0]=(0.85,0.85,0.85)
 	...
-	colorlist[9]=(1.00 0.00 1.00 )
-	[1]ColorMap 
-	colormap['light gray']  = ((0.85,0.85,0.85),0)
+	colorlist[9]=(1.00,0.00,1.00)
+	[2] colormap - 颜色映射字典
+	colormap['light gray'] = ((0.85,0.85,0.85),0)
 	...
-	colormap['violet']  = ((1.00 0.00 1.00 ),0)
-
-	example：
-	ColorFileName  = r'./ColorRicebal.txt'
-
+	colormap['violet'] = ((1.00,0.00,1.00),9)
 	"""
 	xfile = open(filename, "r")#, encoding = 'utf-8')
 	colorlist = []
@@ -69,25 +60,16 @@ def get_color_map(filename):
 
 def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, dat_file=None, output_file='surface_particles.txt'):
 	"""
+	绘制颗粒
 	输入参数：
-	[1] fig  
-	[2] ax
-	[3] BALLxyN2   nx2
-	[4] BALLRadN1 nx1
-	[5] BALLColorN1 nx1
-	[6] ColorList
-		[0.85 0.85 0.85 
-		 0.00 1.00 0.00
-		 1.00 1.00 0.00
-		 1.00 0.00 0.00 
-		 0.90 0.90 0.90 
-		 0.15 0.15 0.15 
-		 0.50 0.50 0.50 
-		 0.00 0.00 1.00 
-		 0.00 1.00 1.00 
-		 1.00 0.00 1.00]
-	[7] dat_file dat文件名（可选）
-	[8] output_file 输出文件名，默认为'surface_particles.txt'
+	[1] fig - 图形对象
+	[2] ax - 坐标轴对象
+	[3] BALLxyN2 - 颗粒坐标 nx2
+	[4] BALLRadN1 - 颗粒半径 nx1
+	[5] BALLColorN1 - 颗粒颜色 nx1
+	[6] ColorList - 颜色列表
+	[7] dat_file - dat文件名（可选）
+	[8] output_file - 输出文件名，默认为'surface_particles.txt'
 	"""
 	
 	ww = BALLRadN1*2.0
@@ -129,7 +111,7 @@ def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, dat_file=Non
 		output_file = os.path.join(data_dir, f'{base_name}_particles.txt')
 		print(f"\n将在以下位置生成颗粒信息文件: {output_file}")
 	
-	# 输出颗粒信息到文件，格式符合Conservation_Layer.py中read_surface_particles函数的要求
+	# 输出颗粒信息到文件，格式符合Area_Conservation_Test.py中read_surface_particles函数的要求
 	if output_file:
 		try:
 			with open(output_file, 'w', encoding='utf-8') as f:

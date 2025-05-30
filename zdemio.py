@@ -218,14 +218,14 @@ def WallListStrToNumpyArray(WALL):
 	P1yList    = [float(oneInfo[3]) for oneInfo in WALL]
 	P2xList    = [float(oneInfo[4]) for oneInfo in WALL]
 	P2yList    = [float(oneInfo[5]) for oneInfo in WALL]
-	
+
 	WALLId=np.asmatrix(IDList).T
 	WALLP1x=np.asmatrix(P1xList).T
 	WALLP1y=np.asmatrix(P1yList).T
 	WALLP2x=np.asmatrix(P2xList).T
 	WALLP2y=np.asmatrix(P2yList).T
 	WALLP1P2xyxyN4 = np.hstack((WALLP1x,WALLP1y,WALLP2x,WALLP2y))
-	
+
 	return WALLId, WALLP1P2xyxyN4
 
 def ContactBondListStrToNumpyArray(CONTACT, BOND):
@@ -256,7 +256,7 @@ def ContactBondListStrToNumpyArray(CONTACT, BOND):
 	
 	BONDFnList    = [float(oneInfo[2])   for oneInfo in BOND]
 	BONDFnN1=np.asmatrix(BONDFnList).T
-	
+
 	return CONTACTId1Id2N2,BONDId1Id2N2,BONDFnN1
 	
 #def xy_move( WALLP1x, WALLP1y, WALLP2x, WALLP2y, BALLUx, BALLUy, xmove, ymove):

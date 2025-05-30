@@ -43,7 +43,6 @@ import zdemplot
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import checkLicense
 
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
