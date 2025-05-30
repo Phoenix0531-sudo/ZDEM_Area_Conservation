@@ -391,20 +391,40 @@ def compare_results(results):
         rounded_area = round(float(result['area']), -3)
         print(f"{result['file_name']}\t{result['total_particles']}\t{rounded_area:.0f}")
     
-    # 计算变化率（从时间步最小的到最大的）
+    # 计算相邻图片之间的变化率
+    print("\n=== 相邻图片变化分析 ===")
+    for i in range(1, len(sorted_results)):
+        prev_result = sorted_results[i-1]
+        curr_result = sorted_results[i]
+        
+        # 计算面积变化率
+        prev_area = float(prev_result['area'])
+        curr_area = float(curr_result['area'])
+        area_change = ((curr_area - prev_area) / prev_area) * 100
+        
+        # 计算颗粒数量变化率
+        prev_particles = prev_result['total_particles']
+        curr_particles = curr_result['total_particles']
+        particle_change = ((curr_particles - prev_particles) / prev_particles) * 100
+        
+        print(f"\n从 {prev_result['file_name']} 到 {curr_result['file_name']}:")
+        print(f"面积变化率: {area_change:+.2f}%")
+        print(f"颗粒数量变化率: {particle_change:+.2f}%")
+    
+    # 计算第一张到最后一张的变化率
     if len(sorted_results) >= 2:
         first_area = float(sorted_results[0]['area'])
         last_area = float(sorted_results[-1]['area'])
         area_change = ((last_area - first_area) / first_area) * 100
         
-        print("\n=== 变化分析 ===")
+        print("\n=== 总体变化分析 ===")
         print(f"从 {sorted_results[0]['file_name']} 到 {sorted_results[-1]['file_name']}")
-        print(f"面积变化率: {area_change:+.2f}%")  # 添加+号以显示正负
+        print(f"面积变化率: {area_change:+.2f}%")
         
         first_particles = sorted_results[0]['total_particles']
         last_particles = sorted_results[-1]['total_particles']
         particle_change = ((last_particles - first_particles) / first_particles) * 100
-        print(f"颗粒数量变化率: {particle_change:+.2f}%")  # 添加+号以显示正负
+        print(f"颗粒数量变化率: {particle_change:+.2f}%")
 
 def main():
     # 处理多个文件
