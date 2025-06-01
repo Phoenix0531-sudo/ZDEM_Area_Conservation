@@ -14,6 +14,7 @@ import re
 import sys
 from matplotlib.patches import Circle  # 添加Circle导入
 import matplotlib as mpl
+import zdemplot
 
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
@@ -75,28 +76,19 @@ def plot_particles(coords, radii=None, title="颗粒分布"):
     if coords is None or coords.shape[0] == 0:
         print("没有颗粒数据可以绘制")
         return
-    
     plt.figure(figsize=(14, 12), facecolor='white')
     ax = plt.gca()
     ax.set_facecolor('white')
-    
-    # 将matrix转换为array以避免维度问题
     coords_array = np.array(coords)
-    
-    # 确保使用一维数组
     x = coords_array[:, 0].flatten()
     y = coords_array[:, 1].flatten()
-    
-    # 使用颗粒实际半径绘制圆形
     if radii is not None:
         radii_array = np.array(radii).flatten()
         for i in range(len(x)):
-            circle = plt.Circle((x[i], y[i]), radii_array[i], fill=True, color='black', alpha=0.6)
+            circle = Circle((x[i], y[i]), radii_array[i], fill=True, color='black', alpha=0.6)
             ax.add_patch(circle)
     else:
-        # 如果没有半径信息，使用默认大小
         plt.scatter(x, y, c='black', s=10, alpha=0.6)
-    
     plt.grid(True, linestyle='--', alpha=0.3)
     plt.xlabel('X坐标', fontsize=12)
     plt.ylabel('Y坐标', fontsize=12)
@@ -141,42 +133,28 @@ def plot_triangulation(tri, coords=None, radii=None, title="三角网格划分")
     if tri is None:
         print("没有三角网格可以绘制")
         return
-    
     plt.figure(figsize=(14, 12), facecolor='white')
     ax = plt.gca()
     ax.set_facecolor('white')
-    
-    # 如果提供了坐标和半径，先绘制颗粒
     if coords is not None and radii is not None:
         coords_array = np.array(coords)
         radii_array = np.array(radii).flatten()
         for i in range(len(coords_array)):
-            circle = plt.Circle((coords_array[i, 0], coords_array[i, 1]), radii_array[i], 
-                               fill=True, color='lightgray', alpha=0.3)
+            circle = Circle((coords_array[i, 0], coords_array[i, 1]), radii_array[i], fill=True, color='lightgray', alpha=0.3)
             ax.add_patch(circle)
-    
-    # 绘制三角网格
     plt.triplot(tri, color='lime', linestyle='-', alpha=1.0, linewidth=0.8)
-    
-    # 绘制顶点
     plt.scatter(tri.x, tri.y, c='blue', s=8, alpha=0.5)
-    
     plt.grid(True, linestyle='--', alpha=0.3)
     plt.xlabel('X坐标', fontsize=12)
     plt.ylabel('Y坐标', fontsize=12)
     plt.title(title, fontsize=14)
-    
-    # 确保坐标轴比例相等
     plt.axis('equal')
-    
-    # 添加边距
     x_min, x_max = plt.xlim()
     y_min, y_max = plt.ylim()
     x_margin = (x_max - x_min) * 0.05
     y_margin = (y_max - y_min) * 0.05
     plt.xlim(x_min - x_margin, x_max + x_margin)
     plt.ylim(y_min - y_margin, y_max + y_margin)
-    
     plt.show()
 
 def filter_triangles(tri, coords, radii, threshold_factor=THRESHOLD_FACTOR):
@@ -268,6 +246,7 @@ def process_surface_particles(threshold_factor=THRESHOLD_FACTOR):
     # 提取对应颗粒的坐标和半径
     filtered_coords = np.array([coords[i] for i in color_indices])
     filtered_radii = np.array([radii[i] for i in color_indices])
+    filtered_colors = np.array([colors[i] for i in color_indices])
     
     print(f"筛选出{len(color_indices)}个颜色为{color_list}的颗粒")
     
@@ -328,7 +307,7 @@ def process_multiple_files(data_dir="data"):
         # 读取表面颗粒数据
         coords, radii, colors = read_surface_particles(file_path)
         
-        if coords is None or coords.shape[0] == 0:
+        if coords is None or radii is None or colors is None or coords.shape[0] == 0:
             print(f"在 {file_name} 中没有找到有效的表面颗粒数据")
             continue
         
@@ -345,11 +324,15 @@ def process_multiple_files(data_dir="data"):
             print(f"在 {file_name} 中没有找到颜色为{color_list}的颗粒")
             continue
         
-        # 提取对应颗粒的坐标和半径
-        filtered_coords = np.array([coords[i] for i in color_indices])
-        filtered_radii = np.array([radii[i] for i in color_indices])
-        
+        # 提取对应颗粒的坐标、半径和颜色
+        filtered_coords = np.array([coords[i] for i in color_indices]) if coords is not None else None
+        filtered_radii = np.array([radii[i] for i in color_indices]) if radii is not None else None
+        filtered_colors = np.array([colors[i] for i in color_indices]) if colors is not None else None
         print(f"筛选出{len(color_indices)}个颜色为{color_list}的颗粒")
+        
+        if filtered_coords is None or filtered_radii is None or filtered_colors is None:
+            print(f"在 {file_name} 中筛选颗粒时数据有误，跳过该文件")
+            continue
         
         # 创建三角网格
         tri = create_triangulation(filtered_coords)
@@ -372,7 +355,8 @@ def process_multiple_files(data_dir="data"):
                     'area': total_area,
                     'coords': filtered_coords,
                     'radii': filtered_radii,
-                    'original_tri': original_tri,  # 保存原始三角网格
+                    'colors': filtered_colors,
+                    'original_tri': original_tri,
                     'tri': filtered_tri
                 })
                 
@@ -434,32 +418,77 @@ def compare_results(results):
         particle_change = ((last_particles - first_particles) / first_particles) * 100
         print(f"颗粒数量变化率: {particle_change:+.2f}%")
 
+def save_particle_plot(coords, radii, colors, colorlist, filename):
+    fig = plt.figure(figsize=(14, 12), facecolor='white')
+    ax = plt.gca()
+    BALLxyN2 = np.asmatrix(coords)
+    BALLRadN1 = np.asmatrix(radii)
+    BALLColorN1 = np.asmatrix(colors)
+    zdemplot.plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, colorlist, dat_file=None, output_file='')
+    zdemplot.zdem_fig_set(
+        fig, ax,
+        xmaxdefine='false', ymaxdefine='false', xmindefine='false', ymindefine='false',
+        xmin=0.0, xmax=70000, ymin=0.0, ymax=25000,
+        wbleft=0.0, wbright=70000, wbbottom=0.0, wbtop=25000,
+        leftshow='true', rightshow='true', bottomshow='true', topshow='true',
+        major_locator=10000.0, minor_locator=1000.0,
+        fontsize=12, linewidth=0.5, pagesize=14
+    )
+    fig.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+def save_triangulation_plot(coords, radii, colors, colorlist, tri, filename, filtered=False):
+    fig = plt.figure(figsize=(14, 12), facecolor='white')
+    ax = plt.gca()
+    BALLxyN2 = np.asmatrix(coords)
+    BALLRadN1 = np.asmatrix(radii)
+    BALLColorN1 = np.asmatrix(colors)
+    zdemplot.plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, colorlist, dat_file=None, output_file='')
+    if tri is not None:
+        color = 'lime'  # 过滤前后都用绿色
+        ax.triplot(tri.x, tri.y, tri.triangles, color=color, linestyle='-', alpha=1.0, linewidth=0.2)
+    zdemplot.zdem_fig_set(
+        fig, ax,
+        xmaxdefine='false', ymaxdefine='false', xmindefine='false', ymindefine='false',
+        xmin=0.0, xmax=70000, ymin=0.0, ymax=25000,
+        wbleft=0.0, wbright=70000, wbbottom=0.0, wbtop=25000,
+        leftshow='true', rightshow='true', bottomshow='true', topshow='true',
+        major_locator=10000.0, minor_locator=1000.0,
+        fontsize=12, linewidth=0.5, pagesize=14
+    )
+    fig.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
 def main():
     # 处理多个文件
     results = process_multiple_files()
-    
-    # 比较结果
     compare_results(results)
-    
-    # 为每个文件绘制图形
+
+    # 创建保存图片的文件夹
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    particles_dir = os.path.join(data_dir, '0_particles_plot')
+    triangulation_dir = os.path.join(data_dir, '1_triangulation_plot')
+    filtered_triangulation_dir = os.path.join(data_dir, '2_filtered_triangulation_plot')
+    os.makedirs(particles_dir, exist_ok=True)
+    os.makedirs(triangulation_dir, exist_ok=True)
+    os.makedirs(filtered_triangulation_dir, exist_ok=True)
+
+    # 获取颜色映射
+    colorlist, _ = zdemplot.get_color_map(os.path.join(os.path.dirname(__file__), 'res', 'ColorRicebal.txt'))
+
     for result in results:
         file_name = result['file_name']
-        print(f"\n正在绘制 {file_name} 的图形...")
-        
-        # 绘制颗粒分布
-        plot_particles(result['coords'], result['radii'], 
-                      f"颜色为{COLOR_TO_EXTRACT}的颗粒分布 ({file_name})")
-        
-        # 绘制原始三角网格
-        plot_triangulation(result['original_tri'], result['coords'], result['radii'],
-                          f"原始三角网格划分 ({file_name})")
-        
-        # 绘制过滤后的三角网格
-        plot_triangulation(result['tri'], result['coords'], result['radii'],
-                          f"过滤后的三角网格划分 ({file_name})")
-    
-    # 显示所有图形
-    plt.show()
+        base_name = os.path.splitext(file_name)[0]
+        print(f"\n正在绘制并保存 {file_name} 的图形...")
+        # 颗粒分布图
+        particle_img = os.path.join(particles_dir, f'{base_name}_particles.jpg')
+        save_particle_plot(result['coords'], result['radii'], result['colors'], colorlist, particle_img)
+        # 原始三角网格图
+        tri_img = os.path.join(triangulation_dir, f'{base_name}_triangulation.jpg')
+        save_triangulation_plot(result['coords'], result['radii'], result['colors'], colorlist, result['original_tri'], tri_img, filtered=False)
+        # 过滤后三角网格图
+        filtered_img = os.path.join(filtered_triangulation_dir, f'{base_name}_filtered_triangulation.jpg')
+        save_triangulation_plot(result['coords'], result['radii'], result['colors'], colorlist, result['tri'], filtered_img, filtered=True)
 
 if __name__ == "__main__":
     main()

@@ -39,10 +39,9 @@ def get_color_map(filename):
 	colorlist = []
 	for line in xfile:
 		ltmp = line.split()
-		#print (ltmp, '\n')
-		for i in range(len(ltmp)):
-			ltmp[i] = float(ltmp[i])
-		colorlist.append(ltmp)
+		# 将每个颜色分量转为float，并存为tuple
+		color_tuple = tuple(float(x) for x in ltmp)
+		colorlist.append(color_tuple)
 	xfile.close()
 	
 	colormap={}
@@ -83,7 +82,7 @@ def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, dat_file=Non
 	#list[0]=(r,g,b,t)
 	# ...
 	#list[n]=(r,g,b,t)
-	facecolors = [ tuple(ColorList[c[0,0]]) for c in BALLColorN1 ]# c=[r,g,b,t]
+	facecolors = [ tuple(ColorList[int(c[0,0])]) for c in BALLColorN1 ]# c=[r,g,b,t]
 	
 	circles = EllipseCollection(ww,hh,aa,
 								units='x',offsets=XY,
@@ -134,27 +133,35 @@ def plot_ball(fig, ax, BALLxyN2, BALLRadN1, BALLColorN1, ColorList, dat_file=Non
 			print(f"写入文件失败: {str(e)}")
 
 def search_domain(WALLP1P2xyxyN4, BALLxyN2, BALLRad):
+    wallNum = WALLP1P2xyxyN4.shape[0]
+    ballNum = BALLxyN2.shape[0]
 
-	wallNum=WALLP1P2xyxyN4.shape[0]
-	ballNum=BALLxyN2.shape[0]
+    Wleft = Wright = Wbottom = Wtop = None
+    Bleft = Bright = Bbottom = Btop = None
 
-	if (wallNum!=0):
-		Wleft,Wright,Wbottom,Wtop = search_domain_wall(WALLP1P2xyxyN4)
-		#print("w",Wleft,Wright,Wbottom,Wtop)
-	if (ballNum!=0):
-		Bleft,Bright,Bbottom,Btop = search_domain_ball(BALLxyN2, BALLRad)
-		#print("b",Bleft,Bright,Bbottom,Btop)
-	
-	if (wallNum!=0):
-		if (ballNum!=0):
-			return min(Wleft,Bleft), max(Wright,Bright), min(Wbottom,Bbottom), max(Wtop,Btop)
-		else:
-			return Wleft, Wright,Bright, Wbottom, Wtop
-	else:
-		if (ballNum!=0):
-			return Bleft, Bright, Bbottom, Btop
-		else:
-			return 0.0,1.0,0.0,1.0
+    if (wallNum != 0):
+        Wleft, Wright, Wbottom, Wtop = search_domain_wall(WALLP1P2xyxyN4)
+    if (ballNum != 0):
+        Bleft, Bright, Bbottom, Btop = search_domain_ball(BALLxyN2, BALLRad)
+
+    # 用默认值替换None，保证min/max参数安全
+    def safe(val, default):
+        return val if val is not None else default
+
+    if (wallNum != 0):
+        if (ballNum != 0):
+            left = min(safe(Wleft, 0.0), safe(Bleft, 0.0))
+            right = max(safe(Wright, 1.0), safe(Bright, 1.0))
+            bottom = min(safe(Wbottom, 0.0), safe(Bbottom, 0.0))
+            top = max(safe(Wtop, 1.0), safe(Btop, 1.0))
+            return left, right, bottom, top
+        else:
+            return safe(Wleft, 0.0), safe(Wright, 1.0), safe(Wbottom, 0.0), safe(Wtop, 1.0)
+    else:
+        if (ballNum != 0):
+            return safe(Bleft, 0.0), safe(Bright, 1.0), safe(Bbottom, 0.0), safe(Btop, 1.0)
+        else:
+            return 0.0, 1.0, 0.0, 1.0
 
 def search_domain_wall(WALLP1P2xyxyN4):
 
