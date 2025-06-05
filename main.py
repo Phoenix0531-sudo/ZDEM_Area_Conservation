@@ -8,6 +8,15 @@
     1. 修改数据为numpy array
     2. 改为EllipseCollection 和 LineCollection绘制大量圆和线段，速度提高~9倍
     3. 增加 --ballplot 默认为ture
+2021/06/17 v2.1 李长圣 如果定义--xmax=40000 --ymax=10000，则不判断模型颗粒所占有区域大小，
+                 直接绘制xmax=40000 ymax=10000大小的模型
+2021/04/24 v2.0 李长圣 修改为zdem2jpg，添加版本号version，添加license认证
+2020/12/29 李长圣　修改默认线程数改为cpu核心数max_workes=multiprocessing.cpu_count()
+2020/07/22 徐雯峤　增加 --bondplot
+2020/07/07 李长圣　改为 --surfaceshow
+2020/07/07 徐雯峤　增加 --showsurface
+2020/06/24 增加 --colormap
+2020/05/24 增加 --wallshow
 2019/08/26
 李长圣 @ 东华理工大学
 实现并行绘图，增加 --xmove= --ymove=
@@ -27,7 +36,7 @@ plot ball to jpg
 
 例如：
 ./main.py --dir=./example 
-./main.py --dir=./example --xmax=40000 --ymax=10000 --xmove=-1000.0 --ymove=-1000.0 --xmin=0.0 --ymin=0.0 --major_locator=10000.0 --minor_locator=1000.0 --fontsize=12 --pagesize=14 --topshow=false --wallshow=true --colormap=./mycolormap.txt --bondplot=false --ballplot=true
+./main.py --dir=./example --xmax=40000 --ymax=10000 --xmove=-1000.0 --ymove=-1000.0 --xmin=0.0 --ymin=0.0 --major_locator=10000.0 --minor_locator=1000.0 --fontsize=12 --pagesize=14 --topshow=false --wallshow=true --colormap=./mycolormap.txt --bondplot=true --ballplot=true
 """
 
 import logging
@@ -43,6 +52,7 @@ import zdemplot
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+import checkLicense
 
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
@@ -51,14 +61,13 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
 #logging.basicConfig(level=logging.INFO)
 #创建一个logger日志对象
 logger = logging.getLogger('test_logger')
-logger.setLevel(logging.DEBUG)  #设置默认的日志级别 CRITICAL > ERROR > WARNING > INFO > DEBUG
+logger.setLevel(logging.WARNING)  #设置默认的日志级别 CRITICAL > ERROR > WARNING > INFO > DEBUG
 #创建StreamHandler对象
 sh = logging.StreamHandler()
 #StreamHandler对象自定义日志级别
-sh.setLevel(logging.DEBUG)
+sh.setLevel(logging.INFO)
 #StreamHandler对象自定义日志格式
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-sh.setFormatter(formatter)
+#sh.setFormatter(formatter)
 sh.flush()
 logger.addHandler(sh)  #logger日志对象加载StreamHandler对象
 
@@ -69,6 +78,7 @@ version = '2.2'
 
 VBOXscriptDir=sys.path[0]
 sys.path.append(VBOXscriptDir)
+total_list = []
 #print ("VBOXscriptDir",VBOXscriptDir)
 #print ("参数个数：",len(sys.argv))
 
@@ -118,12 +128,10 @@ fontsize=9
 #采用multiprocessing.cpu_count() slurm无法获取分配的核心数
 #改为获取可用核心数
 pid=0 #当前进程
-import multiprocessing
-try:
-    max_workers = len(os.sched_getaffinity(pid))
-except AttributeError:
-    # Windows系统使用CPU核心数
-    max_workers = multiprocessing.cpu_count()
+#print("useable cpus %d" %(len(os.sched_getaffinity(pid))) )
+# max_workers=len(os.sched_getaffinity(pid))
+max_workers = 4
+#print("max_workers:%d" %(max_workers) )
 
 dpi=600
 linewidth=0.5
@@ -209,10 +217,86 @@ plt.close('all')
 ColorList, ColorMap = zdemplot.get_color_map(colormapfile)
 #get <*.dat> file
 VBOXfile= zdemio.get_file_list(DataDir, FileNamePrefix='all_', FileNameSuffix='.dat')
+def compute_polygon_area(points):
+    point_num = len(points)
+    if(point_num < 3): return 0.0
+    s = points[0][1] * (points[point_num-1][0] - points[1][0])
+
+    for i in range(1, point_num):
+        s += points[i][1] * (points[i-1][0] - points[(i+1)%point_num][0])
+    return abs(s/2.0)
 
 def read_and_gen_fig(file):
+    
 	print("read file:%s"%(file),flush=True)
-	WALL,BALL,CONTACT,BOND,CurrentStep=zdemio.read_data(file)
+	WALL,BALL,CONTACT,BOND,CurrentStep, Group=zdemio.read_data(file)
+	test = []
+	lef_wall = []
+	rig_wall = []
+	
+	top_wall_left_x = float(WALL[7][4])
+	top_wall_left_y = float(WALL[7][5])
+	top_wall_right_x = float(WALL[7][2])
+	top_wall_right_y = float(WALL[7][3])
+	top_wall_left_y1 = float(WALL[8][5])
+ 
+	bottom_wall_left_x = float(WALL[4][2])
+	bottom_wall_left_y = float(WALL[4][3])
+	bottom_wall_left_x1 = float(WALL[5][2])
+	bottom_wall_left_y1 = float(WALL[5][3])
+	bottom_wall_right_x = float(WALL[4][4])
+	bottom_wall_right_y = float(WALL[4][5])
+	bottom_wall_right_x1 = float(WALL[6][4])
+	bottom_wall_right_y1 = float(WALL[6][5])
+ 
+	area1 = (bottom_wall_right_x - bottom_wall_left_x1) * (bottom_wall_left_y - bottom_wall_left_y1)
+	area2 = (top_wall_right_x - top_wall_left_x) * (top_wall_left_y1 - top_wall_left_y)
+	total_area = area1 + area2
+	total_list.append(total_area)
+	
+	# with open(r'E:\scientific_research\project\test\data\area_subtract.txt', 'a') as file:
+	# 	file.write(str(total_area))
+	# 	file.write('\n')
+
+
+	
+	for i in range(len(Group)):
+		
+		if Group[i][1] == 'lef_wall':
+			for j in range(len(BALL)):
+				if BALL[j][1] == Group[i][0]:
+					test.append(BALL[j])
+					lef_wall.append(BALL[j])
+			
+		if Group[i][1] == 'rig_wall':
+			for j in range(len(BALL)):
+				if BALL[j][1] == Group[i][0]:
+					test.append(BALL[j])
+					rig_wall.append(BALL[j])
+
+
+	BALL = test
+	Ball_position = []
+	# Ball_position.append([float(bottom_wall_left_x), float(bottom_wall_left_y)])
+	
+	for k in range(len(lef_wall)):
+		Ball_position.append([float(lef_wall[k][2]), float(lef_wall[k][3])])
+	# Ball_position.append([float(top_wall_left_x), float(top_wall_left_y)])
+	# Ball_position.append([float(top_wall_right_x), float(top_wall_right_y)])
+
+	for k in range(len(rig_wall)):
+		Ball_position.append([float(rig_wall[k][2]), float(rig_wall[len(rig_wall) - 1 - k][3])])
+	# Ball_position.append([float(bottom_wall_right_x), float(bottom_wall_right_y)])
+
+	filename = file.split('\\')[5].split('.')[0]
+	with open(r'E:\scientific_research\project\test\data\{}.txt'.format(filename), 'a') as file:
+		for i in range(len(Ball_position)):
+			file.write(str(Ball_position[i][0]) + ',' +str(Ball_position[i][1]))
+			file.write('\n')
+	
+	# print(Ball_position)
+	# 
+	#print(compute_polygon_area(Ball_position))
 	#List to array
 	BALLIdN1, BALLxyN2, BALLRadN1, BALLColor = zdemio.BallListStrToNumpyArray(BALL)
 	WALLIdN1, WALLP1P2xyxyN4 = zdemio.WallListStrToNumpyArray(WALL)
@@ -229,15 +313,7 @@ def read_and_gen_fig(file):
 	#	ax = subplot(111,aspect='equal')
 		axball=plt.gca()
 		#bleft,bright,bbottom,btop = zdemplot.plot_ball(fig,ax,Ball,ColorList)
-		print(f"开始处理文件: {file}")
-		try:
-			# 获取绝对路径
-			abs_file = os.path.abspath(file)
-			print(f"文件的绝对路径: {abs_file}")
-			zdemplot.plot_ball(figball,axball,BALLxyN2, BALLRadN1, BALLColor, ColorList, dat_file=abs_file)
-			print(f"完成处理文件: {file}")
-		except Exception as e:
-			print(f"处理文件 {file} 时出错: {str(e)}")
+		zdemplot.plot_ball(figball,axball,BALLxyN2, BALLRadN1, BALLColor, ColorList)
 		#print(wbleft,wbright,wbbottom,wbtop )
 		
 		#print('wallshow',wallshow)
@@ -245,7 +321,7 @@ def read_and_gen_fig(file):
 			zdemplot.plot_wall(figball,axball,WALLP1P2xyxyN4,ColorList,linewidth=linewidth)
 		if (surfaceshow == 'true'): 
 			zdemplot.plot_surface(figball,axball,BALLxyN2, BALLRadN1,linewidth=linewidth)
-
+		
 		#set figure
 		zdemplot.zdem_fig_set(figball,axball,xmaxdefine, ymaxdefine, xmindefine, ymindefine, 
 							xmin,xmax,ymin,ymax,
@@ -333,14 +409,10 @@ max_workers=min(max_workers,len(VBOXfile))
 print("parallel num:",max_workers)
 print("file num:",len(VBOXfile))
 if __name__ == '__main__' :
-	# 暂时禁用多进程，改用单进程模式
-	print("使用单进程模式进行测试")
-	for file in VBOXfile:
-		read_and_gen_fig(file)
+	with ProcessPoolExecutor(max_workers=max_workers) as executor:
+		VBOXfileList= VBOXfile
+		allnum=executor.map(read_and_gen_fig, VBOXfileList)
 	
-	# with ProcessPoolExecutor(max_workers=max_workers) as executor:
-	# 	VBOXfileList= VBOXfile
-	# 	allnum=executor.map(read_and_gen_fig, VBOXfileList)
 
 #test
 #for file in VBOXfile:

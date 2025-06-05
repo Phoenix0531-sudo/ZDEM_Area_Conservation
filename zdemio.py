@@ -103,9 +103,11 @@ def read_data(filename):
 	BALL = []
 	CONTACT=[]
 	BOND=[]
+	GROUP = []
 	vbcontact= 'False'
 	vbbond='False'
 	zdemfile = open(filename, "r")#, encoding = 'utf-8')
+
 	for line in zdemfile:
 		#if "ball data" in line:
 		#	header.append(line)
@@ -121,7 +123,8 @@ def read_data(filename):
 			flag = 2
 			continue
 		if "     index         id            m" in line: #quit as the cell data goes to end
-			flag = 0
+			flag = 5
+			continue
 		if "contact data ..." in line: #record contact
 			vbcontact='true'
 			continue
@@ -146,6 +149,7 @@ def read_data(filename):
 		if flag == 1:
 			wall_info = line.split()
 			WALL.append(wall_info)
+		
 		if flag == 2:
 			#print line
 			ball_info = line.split()
@@ -161,6 +165,11 @@ def read_data(filename):
 			bond_info = line.split()
 			bond_info = [ i for i in bond_info[0:3] ]
 			BOND.append(bond_info)
+		if flag == 5:
+			temp = line.split()
+			if len(temp) != 0:
+				GROUP.append([temp[1], temp[10]])
+			
 	del WALL[-1] #del last NULL line
 	del BALL[-1] #del last NULL line
 	if CONTACT == []:
@@ -173,7 +182,7 @@ def read_data(filename):
 	zdemfile.close()
 	#print(BOND)
 	
-	return  WALL, BALL, CONTACT, BOND, CurrentStep
+	return  WALL, BALL, CONTACT, BOND, CurrentStep, GROUP
 
 def BallListStrToNumpyArray(BALL):
 	"""
@@ -193,69 +202,68 @@ def BallListStrToNumpyArray(BALL):
 	RADList    = [float(oneInfo[4]) for oneInfo in BALL]
 	COLORList = [int(oneInfo[5])   for oneInfo in BALL]
 	
-	BALLId=np.asmatrix(IDList).T
-	BALLx=np.asmatrix(UxList).T
-	BALLy=np.asmatrix(UyList).T
+	BALLId=np.matrix(IDList).T
+	BALLx=np.matrix(UxList).T
+	BALLy=np.matrix(UyList).T
 	BALLxyN2 = np.hstack((BALLx,BALLy))
 	
-	BALLRad=np.asmatrix(RADList).T
-	BALLColor=np.asmatrix(COLORList).T
-	
+	BALLRad=np.matrix(RADList).T
+	BALLColor=np.matrix(COLORList).T
 	return BALLId, BALLxyN2, BALLRad, BALLColor
 
-def WallListStrToNumpyArray(WALL):
+def  WallListStrToNumpyArray(WALL):
 	"""
-	转换为numpy数据类型matrix
+	转换为numpy数据类型
 	输入参数：
-	[1]WALL  墙体信息nx6 [ index id P1x P1y P2x P2y]
+	[1]WALL  墙体信息nx6 [ index id P1x P1y P2x P2y ]
 	输出参数：
-	[1]WALLid     nx1
-	[2]WALLP1P2xyxyN4   nx4
+	[1]WALLid           nx1 [id]
+	[2]WALLP1P2xyxyN4   nx4 [ P1x P1y P2x P2y ]
 	"""
-	#list(map(int,BALL))
 	IDList    = [int(oneInfo[1])   for oneInfo in WALL]
 	P1xList    = [float(oneInfo[2]) for oneInfo in WALL]
 	P1yList    = [float(oneInfo[3]) for oneInfo in WALL]
 	P2xList    = [float(oneInfo[4]) for oneInfo in WALL]
 	P2yList    = [float(oneInfo[5]) for oneInfo in WALL]
 
-	WALLId=np.asmatrix(IDList).T
-	WALLP1x=np.asmatrix(P1xList).T
-	WALLP1y=np.asmatrix(P1yList).T
-	WALLP2x=np.asmatrix(P2xList).T
-	WALLP2y=np.asmatrix(P2yList).T
-	WALLP1P2xyxyN4 = np.hstack((WALLP1x,WALLP1y,WALLP2x,WALLP2y))
-
+	WALLId=np.matrix(IDList).T
+	WALLP1x=np.matrix(P1xList).T
+	WALLP1y=np.matrix(P1yList).T
+	WALLP2x=np.matrix(P2xList).T
+	WALLP2y=np.matrix(P2yList).T
+	WALLP1P2xyxyN4 = np.hstack((WALLP1x, WALLP1y, WALLP2x, WALLP2y))
+	# print('WALLP1P2xyxyN4', WALLP1P2xyxyN4)
 	return WALLId, WALLP1P2xyxyN4
+
 
 def ContactBondListStrToNumpyArray(CONTACT, BOND):
 	"""
-	转换为numpy数据类型matrix
+	转换为numpy数据类型
 	输入参数：
-	[1]CONTACT  接触信息nx2 [ id1 id2]
-	[2]BOND     粘结信息nx2 [ id1 id2]
+	[1]CONTACT  接触信息n x [ id1  id2  Fn  Fs   globalFx   globalFy ...]
+	[2]BOND     粘结信息n x [ id1  id2  Fn  Fs   globalFx   globalFy ...]
 	输出参数：
-	[1]CONTACTId1Id2N2     nx2
-	[2]BONDId1Id2N2        nx2
-	[3]BONDFnN1            nx1
+	[1]CONTACTId1Id2N2    nx2 [id1 id2]
+	[2]BONDId1Id2N2       nx2 [id1 id2]
+	[3]BONDFnN1           nx1 [Fn]
 	"""
-	#list(map(int,BALL))
-	CONTACTId1List    = [int(oneInfo[0])   for oneInfo in CONTACT]
-	CONTACTId2List    = [int(oneInfo[1])   for oneInfo in CONTACT]
+	CONTACTId1List  = [int(oneInfo[0]) for oneInfo in CONTACT]
+	CONTACTId2List  = [int(oneInfo[1]) for oneInfo in CONTACT]
 	
-	CONTACTId1=np.asmatrix(CONTACTId1List).T
-	CONTACTId2=np.asmatrix(CONTACTId2List).T
-	CONTACTId1Id2N2 = np.hstack((CONTACTId1,CONTACTId2))
+	BONDId1List  = [int(oneInfo[0]) for oneInfo in BOND]
+	BONDId2List  = [int(oneInfo[1]) for oneInfo in BOND]
+	BONDFnList   = [float(oneInfo[2]) for oneInfo in BOND]
 	
-	BONDId1List    = [int(oneInfo[0])   for oneInfo in BOND]
-	BONDId2List    = [int(oneInfo[1])   for oneInfo in BOND]
+
+	CONTACTId1=np.matrix(CONTACTId1List).T
+	CONTACTId2=np.matrix(CONTACTId2List).T
+	CONTACTId1Id2N2 = np.hstack((CONTACTId1, CONTACTId2))
 	
-	BONDId1=np.asmatrix(BONDId1List).T
-	BONDId2=np.asmatrix(BONDId2List).T
-	BONDId1Id2N2 = np.hstack((BONDId1,BONDId2))
+	BONDId1=np.matrix(BONDId1List).T
+	BONDId2=np.matrix(BONDId2List).T
+	BONDId1Id2N2 = np.hstack((BONDId1, BONDId2))
 	
-	BONDFnList    = [float(oneInfo[2])   for oneInfo in BOND]
-	BONDFnN1=np.asmatrix(BONDFnList).T
+	BONDFnN1=np.matrix(BONDFnList).T
 
 	return CONTACTId1Id2N2,BONDId1Id2N2,BONDFnN1
 	
@@ -268,8 +276,8 @@ def xy_move( WALLP1P2xyxyN4, BALLxyN2, xmove, ymove):
 	[2] xmove 颗粒坐标x方向偏移量
 	[3] ymove 颗粒坐标y方向偏移量
 	"""
-	WALLP1P2xyxyN4 = WALLP1P2xyxyN4 + np.asmatrix([[xmove,ymove,xmove,ymove]])
-	BALLxyN2 = BALLxyN2 + np.asmatrix([[xmove,ymove]])
+	WALLP1P2xyxyN4 = WALLP1P2xyxyN4 + np.mat([[xmove,ymove,xmove,ymove]])
+	BALLxyN2 = BALLxyN2 + np.mat([[xmove,ymove]])
 	return WALLP1P2xyxyN4, BALLxyN2
 
 
