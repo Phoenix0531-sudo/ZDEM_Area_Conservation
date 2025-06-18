@@ -38,26 +38,6 @@ PLOT_ORIGINAL_TRI = True       # 是否绘制原始三角网格
 PLOT_FILTERED_TRI = True       # 是否绘制过滤后三角网格
 PLOT_AREA_TREND = 'raw'         # 面积趋势图类型: 'raw', 'percentage', 'normalized'
 
-CUSTOM_COLOR_LIST = [
-    (0.36, 0.54, 0.66),  # 莫兰迪蓝
-    (0.80, 0.60, 0.70),  # 莫兰迪粉
-    (0.60, 0.80, 0.70),  # 莫兰迪绿
-    (0.90, 0.80, 0.60),  # 莫兰迪黄
-    (0.70, 0.70, 0.70),  # 高级灰
-    (0.50, 0.60, 0.50),  # 莫兰迪灰绿
-    (0.80, 0.70, 0.50),  # 莫兰迪棕
-    (0.60, 0.60, 0.80),  # 莫兰迪紫
-    (1.0, 0.0, 0.0),     # 红色
-    (0.0, 1.0, 0.0),     # 绿色
-    (0.0, 0.0, 1.0),     # 蓝色
-    (1.0, 1.0, 0.0),     # 黄色
-    (1.0, 0.0, 1.0),     # 品红
-    (0.0, 1.0, 1.0),     # 青色
-    (0.5, 0.5, 0.5),     # 中灰
-    (0.2, 0.2, 0.2),     # 深灰
-    (0.9, 0.9, 0.9),     # 浅灰
-]
-
 def usage(software_name):
     print(f"用法: python {software_name} [选项]")
     print("  --dir=<目录>           指定包含 .dat 文件的目录 (默认: data)")
@@ -309,18 +289,19 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
     if coords is None or coords.shape[0] == 0:
         warnings.warn(f"没有坐标数据，无法绘制三角网格图到 '{filename}'。", UserWarning)
         return
-    # 保证 colors 是 (N,1,1)，每一行是二维
     if colors is not None:
-        colors = np.array(colors)
+        # 全部映射为0，保证所有颗粒都用同一种颜色
+        colors = np.zeros_like(colors)
         if len(colors.shape) == 1:
             colors = colors.reshape(-1, 1)
         colors = np.array([c.reshape(1, 1) for c in colors])
+    # 只用一种颜色（绿色）
+    color_list = [(0, 1, 0)]
     fig, ax = plt.subplots(figsize=(14, 12), facecolor='white')
     ax.set_facecolor('white')
     zdemplot.plot_ball(fig, ax, coords, radii, colors, color_list)
     if tri is not None and tri.triangles.shape[0] > 0:
-        color = 'lime' if not filtered else 'red'
-        ax.triplot(tri.x, tri.y, tri.triangles, color=color, linestyle='-', alpha=1.0, linewidth=0.2)
+        ax.triplot(tri.x, tri.y, tri.triangles, color='lime', linestyle='-', alpha=1.0, linewidth=0.2)
     else:
         warnings.warn(f"没有有效的三角网格数据，跳过绘制网格线到 '{filename}'。", UserWarning)
     zdemplot.zdem_fig_set(
@@ -460,7 +441,6 @@ def main():
     data_dir_abs = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_dir)
     triangulation_dir = os.path.join(data_dir_abs, '1_triangulation_plot')
     filtered_triangulation_dir = os.path.join(data_dir_abs, '2_filtered_triangulation_plot')
-    drawing_color_list = CUSTOM_COLOR_LIST
     if not results:
         warnings.warn("没有可用于绘图的结果，跳过图片保存。", UserWarning)
         return
@@ -471,11 +451,11 @@ def main():
         colors = result.get('colors')
         original_tri = result.get('original_tri')
         filtered_tri = result.get('tri')
-        # 保证 colors 是 (N,1)
         if colors is not None:
             colors = np.array(colors)
             if len(colors.shape) == 1:
                 colors = colors.reshape(-1, 1)
+            colors = np.array([c.reshape(1, 1) for c in colors])
         if file_name is None or coords is None or radii is None or colors is None:
             warnings.warn(f"跳过文件 '{file_name}' 的绘图，因为数据不完整。", UserWarning)
             continue
@@ -484,11 +464,11 @@ def main():
         if plot_original_tri_flag:
             os.makedirs(triangulation_dir, exist_ok=True)
             tri_img = os.path.join(triangulation_dir, f'{base_name}_triangulation.jpg')
-            save_triangulation_plot(coords, radii, colors, drawing_color_list, original_tri, tri_img, filtered=False)
+            save_triangulation_plot(coords, radii, colors, None, original_tri, tri_img, filtered=False)
         if plot_filtered_tri_flag:
             os.makedirs(filtered_triangulation_dir, exist_ok=True)
             filtered_img = os.path.join(filtered_triangulation_dir, f'{base_name}_filtered_triangulation.jpg')
-            save_triangulation_plot(coords, radii, colors, drawing_color_list, filtered_tri, filtered_img, filtered=True)
+            save_triangulation_plot(coords, radii, colors, None, filtered_tri, filtered_img, filtered=True)
     print("--- ZDEM颗粒分布与面积守恒分析完成 ---")
 
 if __name__ == "__main__":
