@@ -63,7 +63,7 @@ pip install matplotlib
 │ ├── 1_triangulation_plot/ # 原始三角网格图片
 │ └── 2_filtered_triangulation_plot/ # 过滤后三角网格图片
 └── README.md
-```
+        ```
 
 ---
 
@@ -80,7 +80,7 @@ pip install matplotlib
 
 3. **参数说明（可选）**  
    支持如下命令行参数：
-   ```
+        ```
    --dir=<目录>           指定数据目录（默认：data）
    --colors=<编号,...>    指定颗粒颜色编号（如7,8）
    --threshold=<浮点数>   三角网格边长阈值因子（默认3.0）
