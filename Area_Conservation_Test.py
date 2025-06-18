@@ -317,73 +317,99 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
     plt.close(fig)
     print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{filename}'。")
 
-def plot_area_trend(results, plot_type='raw'):
-    """绘制面积趋势曲线图，并自动保存到 data 目录下"""
+def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0):
+    """
+    绘制面积趋势曲线图。
+    - 确保波动范围线总是显示。
+    - 通过可配置的 y_axis_margin 参数自由调整Y轴范围，以平滑视觉波动。
+    - 自动保存图表到 data 目录下。
+
+    :param results: 包含面积数据的字典列表。
+    :param plot_type: 绘图类型 ('raw', 'percentage', 'normalized')。
+    :param y_axis_margin: Y轴上下边距的百分比，值越大，中心趋势线波动看起来越平缓。
+    """
     if not results:
         print("没有可用于绘制面积趋势图的结果。")
         return
+
     sorted_results = sorted(results, key=lambda x: int(re.findall(r'\d+', x['file_name'])[-1]) if re.findall(r'\d+', x['file_name']) else 0)
+    
     file_numbers = [int(re.findall(r'\d+', r['file_name'])[-1]) for r in sorted_results if re.findall(r'\d+', r['file_name'])]
     areas = [r['area'] for r in sorted_results if re.findall(r'\d+', r['file_name'])]
+
     if not file_numbers or not areas:
         warnings.warn("未能从结果中提取有效的绘图数据，无法绘制面积趋势图。", UserWarning)
         return
+
     y_data = []
     y_label = "面积"
     title = "面积趋势图"
+
     if plot_type == 'percentage':
-        if len(areas) > 0 and areas[0] != 0:
+        if areas[0] != 0:
             y_data = [((a - areas[0]) / areas[0]) * 100 for a in areas]
             y_label = "面积变化百分比 (%)"
-            title = "面积变化百分比趋势图 (相对于第一个文件)"
+            title = "面积变化百分比趋势图"
         else:
             warnings.warn("警告: 第一个文件的面积为零，无法计算百分比变化。", UserWarning)
             return
     elif plot_type == 'normalized':
-        if len(areas) > 0 and areas[0] != 0:
+        if areas[0] != 0:
             y_data = [a / areas[0] for a in areas]
-            y_label = "归一化面积 (相对于第一个文件)"
-            title = "归一化面积趋势图 (相对于第一个文件)"
+            y_label = "归一化面积"
+            title = "归一化面积趋势图"
         else:
             warnings.warn("警告: 第一个文件的面积为零，无法进行归一化。", UserWarning)
             return
-    else:
+    else: # raw
         y_data = areas
         y_label = "面积 (平方单位)"
         title = "原始面积趋势图"
-    fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
-    ax.plot(file_numbers, y_data, marker='o', linestyle='-', color='blue', linewidth=2)
+
+    fig, ax = plt.subplots(figsize=(12, 7), facecolor='white')
+    ax.plot(file_numbers, y_data, marker='o', linestyle='-', color='royalblue', linewidth=2, label='面积趋势')
+    
     ax.set_xlabel('文件编号', fontsize=12)
     ax.set_ylabel(y_label, fontsize=12)
-    ax.set_title(title, fontsize=14)
-    ax.grid(True, linestyle='--', alpha=0.6)
-    ax.yaxis.set_major_formatter(mticker.ScalarFormatter(useMathText=False))
+    ax.set_title(title, fontsize=16, pad=20)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     ax.ticklabel_format(style='plain', axis='y')
+
     if y_data:
-        ymin_val, ymax_val = np.min(y_data), np.max(y_data)
-        y_range = ymax_val - ymin_val
-        margin = y_range * 0.1
-        if margin == 0:
-            margin = abs(ymin_val) * 0.1 or 1.0
-        ax.set_ylim(ymin_val - margin, ymax_val + margin)
-        if plot_type == 'raw' and len(y_data) > 0 and y_data[0] != 0:
+        plot_min, plot_max = np.min(y_data), np.max(y_data)
+
+        if plot_type == 'raw' and y_data[0] != 0:
             base_area = y_data[0]
             upper_bound = base_area * 1.05
             lower_bound = base_area * 0.95
-            if lower_bound < ymax_val + margin and upper_bound > ymin_val - margin:
-                ax.axhline(upper_bound, color='red', linestyle=':', linewidth=1.5, label='+5% 波动', zorder=10)
-                ax.axhline(lower_bound, color='green', linestyle=':', linewidth=1.5, label='-5% 波动', zorder=10)
-                ax.legend(loc='upper right', fontsize=10, frameon=True)
-            elif lower_bound > ymax_val + margin:
-                ax.axhline(upper_bound, color='red', linestyle=':', linewidth=1.5, label='+5% 波动', zorder=10)
-            elif upper_bound < ymin_val - margin:
-                ax.axhline(lower_bound, color='green', linestyle=':', linewidth=1.5, label='-5% 波动', zorder=10)
-    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+            
+            ax.axhline(upper_bound, color='red', linestyle=':', linewidth=1.5, label='+5% 波动阈值')
+            ax.axhline(lower_bound, color='green', linestyle=':', linewidth=1.5, label='-5% 波动阈值')
+            
+            plot_min = min(plot_min, lower_bound)
+            plot_max = max(plot_max, upper_bound)
+
+        # --- 关键修改：使用可配置的 y_axis_margin ---
+        y_range = plot_max - plot_min
+        # 使用传入的 y_axis_margin 参数计算边距
+        margin = y_range * y_axis_margin
+        if margin == 0:
+            margin = abs(plot_min) * 0.2 or 1.0
+            
+        ax.set_ylim(plot_min - margin, plot_max + margin)
+
+    ax.legend(loc='upper right', fontsize=10, frameon=True)
+    
+    try:
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    except NameError:
+        data_dir = 'data'
+        
     os.makedirs(data_dir, exist_ok=True)
-    save_path = os.path.join(data_dir, 'area_trend.jpg')
+    save_path = os.path.join(data_dir, f'area_trend.jpg')
     fig.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close(fig)
-    print(f"面积趋势图已保存到: {save_path}")
+    print(f"边距为 {int(y_axis_margin*100)}% 的面积趋势图已保存到: {save_path}")
 
 def main():
     data_dir = DEFAULT_DATA_DIR
