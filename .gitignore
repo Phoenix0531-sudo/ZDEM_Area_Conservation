@@ -23,3 +23,5 @@ dist/
 # 忽略临时文件
 .gitignore~
 
+__pycache__
+__pycache__
