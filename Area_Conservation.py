@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation
 import matplotlib.ticker as mticker
 import warnings
+from scipy.spatial import Delaunay  # 添加Delaunay导入
 
 # 导入zdemio和zdemplot模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -31,7 +32,7 @@ plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 # 常量定义 (将被命令行参数覆盖)
-COLOR_TO_EXTRACT = [7]         # 要提取的颗粒颜色编号
+COLOR_TO_EXTRACT = list(range(0, 10))  # 提取颜色编号 0-9 的颗粒
 THRESHOLD_FACTOR = 3.0        # 三角网格边长阈值因子
 DEFAULT_DATA_DIR = "data"       # 默认数据目录
 PLOT_ORIGINAL_TRI = True       # 是否绘制原始三角网格
@@ -46,6 +47,8 @@ def usage(software_name):
     print("  --plot-original-tri=<true|false> 是否绘制原始三角网格图 (默认: true)")
     print("  --plot-filtered-tri=<true|false> 是否绘制过滤后三角网格图 (默认: true)")
     print("  --plot-area-type=<raw|percentage|normalized> 面积趋势图类型 (默认: raw)")
+    print("  --xmax=<浮点数>         指定实验区域的X轴最大值")
+    print("  --ymax=<浮点数>         指定实验区域的Y轴最大值")
     print("  -h                     显示此帮助信息")
 
 def read_surface_particles(filename):
@@ -96,7 +99,10 @@ def create_triangulation(coords):
             warnings.warn("警告: 颗粒点存在大量重复或几乎共线，三角剖分可能不准确或失败。", UserWarning)
             return None
     try:
-        tri = Triangulation(coords[:, 0], coords[:, 1])
+        # 使用Delaunay三角剖分
+        delaunay = Delaunay(coords)
+        # 将Delaunay结果转换为matplotlib的Triangulation对象
+        tri = Triangulation(coords[:, 0], coords[:, 1], triangles=delaunay.simplices)
         if len(tri.triangles) == 0:
             warnings.warn("警告: 没有生成任何三角形。", UserWarning)
             return None
@@ -284,7 +290,7 @@ def compare_results(results):
         print(f"面积变化率: {area_change_overall:+.2f}%")
         print(f"颗粒数量变化率: {particle_change_overall:+.2f}%")
 
-def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, filtered=False):
+def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, filtered=False, xmax=70000.0, ymax=25000.0):
     """保存三角网格图（叠加颗粒）"""
     if coords is None or coords.shape[0] == 0:
         warnings.warn(f"没有坐标数据，无法绘制三角网格图到 '{filename}'。", UserWarning)
@@ -299,16 +305,33 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
     color_list = [(0, 1, 0)]
     fig, ax = plt.subplots(figsize=(14, 12), facecolor='white')
     ax.set_facecolor('white')
-    zdemplot.plot_ball(fig, ax, coords, radii, colors, color_list)
+    # 显式设置坐标轴范围
+    ax.set_xlim(0, xmax)
+    ax.set_ylim(0, ymax)
+    if coords is not None and radii is not None and colors is not None:
+        # 过滤超出xmax和ymax范围的颗粒
+        mask = (coords[:, 0] <= xmax) & (coords[:, 1] <= ymax)
+        filtered_coords = coords[mask]
+        filtered_radii = radii[mask]
+        filtered_colors = colors[mask]
+        if len(filtered_coords) > 0:
+            zdemplot.plot_ball(fig, ax, filtered_coords, filtered_radii, filtered_colors, color_list)
+        else:
+            warnings.warn(f"没有颗粒在指定区域内 (xmax={xmax}, ymax={ymax})，跳过绘制颗粒到 '{filename}'。", UserWarning)
+    else:
+        warnings.warn(f"没有有效的颗粒数据，跳过绘制颗粒到 '{filename}'。", UserWarning)
     if tri is not None and tri.triangles.shape[0] > 0:
         ax.triplot(tri.x, tri.y, tri.triangles, color='lime', linestyle='-', alpha=1.0, linewidth=0.2)
     else:
         warnings.warn(f"没有有效的三角网格数据，跳过绘制网格线到 '{filename}'。", UserWarning)
+    # 先绘制颗粒和三角网格，再设置坐标轴范围
+    ax.set_xlim(0, xmax)
+    ax.set_ylim(0, ymax)
     zdemplot.zdem_fig_set(
         fig, ax,
         xmaxdefine='true', ymaxdefine='true', xmindefine='true', ymindefine='true',
-        xmin=0.0, xmax=70000.0, ymin=0.0, ymax=25000.0,
-        wbleft=0.0, wbright=70000.0, wbbottom=0.0, wbtop=25000.0,
+        xmin=0.0, xmax=xmax, ymin=0.0, ymax=ymax,
+        wbleft=0.0, wbright=xmax, wbbottom=0.0, wbtop=ymax,
         leftshow='true', rightshow='true', bottomshow='true', topshow='true',
         major_locator=10000.0, minor_locator=1000.0,
         fontsize=12, linewidth=0.5, pagesize=14
@@ -418,9 +441,11 @@ def main():
     plot_original_tri_flag = PLOT_ORIGINAL_TRI
     plot_filtered_tri_flag = PLOT_FILTERED_TRI
     plot_area_type = PLOT_AREA_TREND
+    xmax = 70000.0  # 默认值
+    ymax = 25000.0  # 默认值
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",\
-        longopts=['dir=','colors=','threshold=','plot-original-tri=','plot-filtered-tri=', 'plot-area-type='])
+        longopts=['dir=','colors=','threshold=','plot-original-tri=','plot-filtered-tri=', 'plot-area-type=', 'xmax=', 'ymax='])
     except getopt.GetoptError as err:
         print(f"命令行参数错误: {err}")
         usage(sys.argv[0])
@@ -454,6 +479,20 @@ def main():
                 plot_area_type = value.lower()
             else:
                 print("错误: --plot-area-type 参数只能是 'raw', 'percentage' 或 'normalized'。")
+                usage(sys.argv[0])
+                sys.exit(2)
+        elif op == "--xmax":
+            try:
+                xmax = float(value)
+            except ValueError:
+                print("错误: --xmax 参数需要浮点数，例如: --xmax=9.0。")
+                usage(sys.argv[0])
+                sys.exit(2)
+        elif op == "--ymax":
+            try:
+                ymax = float(value)
+            except ValueError:
+                print("错误: --ymax 参数需要浮点数，例如: --ymax=15.0。")
                 usage(sys.argv[0])
                 sys.exit(2)
     print("--- 开始处理ZDEM颗粒分布与面积守恒分析 ---")
@@ -490,11 +529,11 @@ def main():
         if plot_original_tri_flag:
             os.makedirs(triangulation_dir, exist_ok=True)
             tri_img = os.path.join(triangulation_dir, f'{base_name}_triangulation.jpg')
-            save_triangulation_plot(coords, radii, colors, None, original_tri, tri_img, filtered=False)
+            save_triangulation_plot(coords, radii, colors, None, original_tri, tri_img, filtered=False, xmax=xmax, ymax=ymax)
         if plot_filtered_tri_flag:
             os.makedirs(filtered_triangulation_dir, exist_ok=True)
             filtered_img = os.path.join(filtered_triangulation_dir, f'{base_name}_filtered_triangulation.jpg')
-            save_triangulation_plot(coords, radii, colors, None, filtered_tri, filtered_img, filtered=True)
+            save_triangulation_plot(coords, radii, colors, None, filtered_tri, filtered_img, filtered=True, xmax=xmax, ymax=ymax)
     print("--- ZDEM颗粒分布与面积守恒分析完成 ---")
 
 if __name__ == "__main__":
