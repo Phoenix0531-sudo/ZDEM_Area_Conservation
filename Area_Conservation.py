@@ -27,12 +27,33 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import zdemio
 import zdemplot
 
-# 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei']
-plt.rcParams['axes.unicode_minus'] = False
+# 全局字体与字号统一（论文规范，避免 PDF 乱码并支持中文回退）
+plt.rcParams.update({
+    'font.family': ['Times New Roman', 'SimHei'],  # 英文 Times，中文使用黑体回退；如需 Arial 可改为 ['Arial','SimHei']
+    'font.size': 10,  # 论文常用：10pt 主字号
+    'axes.labelsize': 10,
+    'axes.titlesize': 10,
+    'xtick.labelsize': 9,
+    'ytick.labelsize': 9,
+    'legend.fontsize': 9,
+    'axes.unicode_minus': False,
+    'savefig.bbox': 'tight',
+    'savefig.pad_inches': 0.05,
+    # 使用 TrueType 嵌入，避免 Type3 字体导致 PDF 乱码
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+    'svg.fonttype': 'none',
+    # 轴线与刻度线宽度（论文风格）
+    'axes.linewidth': 1.0,
+    'xtick.major.width': 0.8,
+    'ytick.major.width': 0.8,
+    'xtick.minor.width': 0.6,
+    'ytick.minor.width': 0.6,
+})
 
 # 常量定义 (将被命令行参数覆盖)
-COLOR_TO_EXTRACT = list(range(0, 10))  # 提取颜色编号 0-9 的颗粒
+# 使用 None 表示默认选择全部颜色
+COLOR_TO_EXTRACT = None  # 默认提取全部颜色
 THRESHOLD_FACTOR = 3.0        # 三角网格边长阈值因子
 DEFAULT_DATA_DIR = "data"       # 默认数据目录
 PLOT_ORIGINAL_TRI = True       # 是否绘制原始三角网格
@@ -42,11 +63,14 @@ PLOT_AREA_TREND = 'raw'         # 面积趋势图类型: 'raw', 'percentage', 'n
 def usage(software_name):
     print(f"用法: python {software_name} [选项]")
     print("  --dir=<目录>           指定包含 .dat 文件的目录 (默认: data)")
-    print("  --colors=<颜色编号,...>  指定要提取的颗粒颜色编号 (逗号分隔, 默认: 7)")
+    print("  --colors=<颜色编号,...>  指定要提取的颗粒颜色编号 (逗号分隔, 默认: all，支持 all 或 * 表示全部颜色)")
     print("  --threshold=<浮点数>     指定边长阈值因子 (默认: 3.0)")
+    print("  --threshold-percent=<浮点数> 面积趋势图阈值百分比，控制绿色安全带与红/绿阈值线位置 (默认: 5.0)")
+    print("  --hint-band-percent=<浮点数> 提示区（绿色带）宽度百分比，默认与阈值一致")
     print("  --plot-original-tri=<true|false> 是否绘制原始三角网格图 (默认: true)")
     print("  --plot-filtered-tri=<true|false> 是否绘制过滤后三角网格图 (默认: true)")
     print("  --plot-area-type=<raw|percentage|normalized> 面积趋势图类型 (默认: raw)")
+    print("  --paper-style=<true|false> 应用论文风格（更粗的坐标轴、统一字号等） (默认: false)")
     print("  --xmax=<浮点数>         指定实验区域的X轴最大值")
     print("  --ymax=<浮点数>         指定实验区域的Y轴最大值")
     print("  -h                     显示此帮助信息")
@@ -227,7 +251,11 @@ def process_multiple_files(data_dir, color_list, threshold_factor):
         if coords is None or radii is None or colors is None:
             warnings.warn(f"文件 '{file_name}' 缺少有效的颗粒数据，跳过该文件。", UserWarning)
             continue
-        color_indices = [i for i in range(colors.shape[0]) if colors[i, 0] in color_list]
+        # 如果未指定颜色列表（None），默认选择全部颗粒
+        if color_list is None:
+            color_indices = list(range(colors.shape[0]))
+        else:
+            color_indices = [i for i in range(colors.shape[0]) if colors[i, 0] in color_list]
         if not color_indices:
             continue
         filtered_coords = coords[color_indices]
@@ -291,7 +319,7 @@ def compare_results(results):
         print(f"颗粒数量变化率: {particle_change_overall:+.2f}%")
 
 def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, filtered=False, xmax=70000.0, ymax=25000.0):
-    """保存三角网格图（叠加颗粒）"""
+    """保存三角网格图（叠加颗粒），按论文规范输出为矢量图（PDF/SVG），宽度≤17cm。"""
     if coords is None or coords.shape[0] == 0:
         warnings.warn(f"没有坐标数据，无法绘制三角网格图到 '{filename}'。", UserWarning)
         return
@@ -303,7 +331,8 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
         colors = np.array([c.reshape(1, 1) for c in colors])
     # 只用一种颜色（绿色）
     color_list = [(0, 1, 0)]
-    fig, ax = plt.subplots(figsize=(14, 12), facecolor='white')
+    # 17cm ≈ 6.69in；高度取 10cm ≈ 3.94in
+    fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
     ax.set_facecolor('white')
     # 显式设置坐标轴范围
     ax.set_xlim(0, xmax)
@@ -334,22 +363,27 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
         wbleft=0.0, wbright=xmax, wbbottom=0.0, wbtop=ymax,
         leftshow='true', rightshow='true', bottomshow='true', topshow='true',
         major_locator=10000.0, minor_locator=1000.0,
-        fontsize=12, linewidth=0.5, pagesize=14
+        fontsize=8, linewidth=0.5, pagesize=6.69
     )
-    fig.savefig(filename, dpi=300, bbox_inches='tight')
+
+    # 统一保存：派生 base 路径，输出为 PDF 与 SVG
+    base = os.path.splitext(filename)[0]
+    pdf_path = base + '.pdf'
+    svg_path = base + '.svg'
+    # 使用紧致裁剪与边距
+    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.05)
+    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.05)
     plt.close(fig)
-    print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{filename}'。")
+    print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{pdf_path}' 与 '{svg_path}'。")
 
-def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0):
+def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0, threshold_percent=5.0, paper_style=False, hint_band_percent=None):
     """
-    绘制面积趋势曲线图。
-    - 确保波动范围线总是显示。
-    - 通过可配置的 y_axis_margin 参数自由调整Y轴范围，以平滑视觉波动。
-    - 自动保存图表到 data 目录下。
+    绘制面积趋势曲线图（论文规范），支持三种视图：
+    - raw: 原始面积（平方单位），基于首个文件面积绘制 ±5% 阈值线；
+    - percentage: 相对首个文件面积的百分比变化，绘制 ±5% 阈值线；
+    - normalized: 以首面积的 [−5%, +5%] 映射到 [0, 1]，绘制 0 与 1 两条阈值线。
 
-    :param results: 包含面积数据的字典列表。
-    :param plot_type: 绘图类型 ('raw', 'percentage', 'normalized')。
-    :param y_axis_margin: Y轴上下边距的百分比，值越大，中心趋势线波动看起来越平缓。
+    输出：PDF 与 SVG，宽 17cm（≈6.69in），高 10cm（≈3.94in），字体 9pt。
     """
     if not results:
         print("没有可用于绘制面积趋势图的结果。")
@@ -364,64 +398,113 @@ def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0):
         warnings.warn("未能从结果中提取有效的绘图数据，无法绘制面积趋势图。", UserWarning)
         return
 
-    y_data = []
-    y_label = "面积"
-    title = "面积趋势图"
+    base_area = float(areas[0])
+    # 根据当前阈值百分比计算归一化的上下界
+    lower_bound = base_area * (1.0 - threshold_percent / 100.0) if base_area != 0 else None
+    upper_bound = base_area * (1.0 + threshold_percent / 100.0) if base_area != 0 else None
 
-    if plot_type == 'percentage':
-        if areas[0] != 0:
-            y_data = [((a - areas[0]) / areas[0]) * 100 for a in areas]
-            y_label = "面积变化百分比 (%)"
-            title = "面积变化百分比趋势图"
-        else:
-            warnings.warn("警告: 第一个文件的面积为零，无法计算百分比变化。", UserWarning)
-            return
-    elif plot_type == 'normalized':
-        if areas[0] != 0:
-            y_data = [a / areas[0] for a in areas]
-            y_label = "归一化面积"
-            title = "归一化面积趋势图"
-        else:
-            warnings.warn("警告: 第一个文件的面积为零，无法进行归一化。", UserWarning)
-            return
-    else: # raw
+    # 提示区宽度默认与阈值一致
+    if hint_band_percent is None:
+        hint_band_percent = threshold_percent
+
+    # 根据绘图类型计算 y_data
+    if plot_type == 'raw':
         y_data = areas
-        y_label = "面积 (平方单位)"
-        title = "原始面积趋势图"
+        y_label = '面积 (平方单位)'
+    elif plot_type == 'percentage':
+        if base_area == 0:
+            warnings.warn("首个面积为0，无法计算百分比变化，回退到原始视图。", UserWarning)
+            y_data = areas
+            y_label = '面积 (平方单位)'
+        else:
+            y_data = [ ((a - base_area) / base_area) * 100.0 for a in areas ]
+            y_label = '面积相对变化 (%)'
+    else:  # normalized
+        if base_area != 0:
+            denom = (upper_bound - lower_bound)
+            if denom == 0:
+                y_data = [0.5 for _ in areas]
+            else:
+                y_data = [ (a - lower_bound) / denom for a in areas ]
+        else:
+            # 回退到最小-最大归一化
+            min_val = float(np.min(areas))
+            max_val = float(np.max(areas))
+            y_data = [0.0 for _ in areas] if max_val == min_val else [ (a - min_val) / (max_val - min_val) for a in areas ]
+        y_label = '归一化面积 (0.0–1.0)'
 
-    fig, ax = plt.subplots(figsize=(12, 7), facecolor='white')
-    ax.plot(file_numbers, y_data, marker='o', linestyle='-', color='royalblue', linewidth=2, label='面积趋势')
-    
-    ax.set_xlabel('文件编号', fontsize=12)
-    ax.set_ylabel(y_label, fontsize=12)
-    ax.set_title(title, fontsize=16, pad=20)
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    # 统计并打印相对首面积的百分比波动范围，便于核查是否越界
+    if base_area != 0:
+        percent_deviation = [ ((a - base_area) / base_area) * 100.0 for a in areas ]
+        min_dev = float(np.min(percent_deviation))
+        max_dev = float(np.max(percent_deviation))
+        print(f"面积相对首文件的波动范围: 最小 {min_dev:+.2f}% / 最大 {max_dev:+.2f}%")
+        if max_dev > threshold_percent or min_dev < -threshold_percent:
+            print(f"提示: 存在超过 ±{threshold_percent:.1f}% 的样本点，请核查数据或阈值设置。")
+
+    # 17cm ≈ 6.69in，选择 10cm ≈ 3.94in 高度
+    fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
+    # 论文风格：更粗的轴线、刻度线、统一字号
+    if paper_style:
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.2)
+        ax.tick_params(axis='both', which='both', width=1.0, labelsize=9)
+    line_label = '面积趋势' if plot_type in ['raw', 'percentage'] else '归一化面积趋势'
+    ax.plot(file_numbers, y_data, marker='o', linestyle='-', color='royalblue', linewidth=1.2, label=line_label)
+
+    ax.set_xlabel('文件编号', fontsize=10 if paper_style else None)
+    ax.set_ylabel(y_label, fontsize=10 if paper_style else None)
+    # 去除标题
+    # ax.set_title(None)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.6)
     ax.ticklabel_format(style='plain', axis='y')
+    # 阈值线与Y轴范围
+    if plot_type == 'raw':
+        if base_area != 0:
+            # 阈值线位置（固定为 threshold_percent）
+            ub = base_area * (1.0 + threshold_percent / 100.0)
+            lb = base_area * (1.0 - threshold_percent / 100.0)
+            ax.axhline(ub, color='red', linestyle=':', linewidth=1.0, label=f'+{threshold_percent:.1f}% 波动阈值')
+            ax.axhline(lb, color='green', linestyle=':', linewidth=1.0, label=f'-{threshold_percent:.1f}% 波动阈值')
+            # 提示区（绿色带）更窄：基于 hint_band_percent
+            ub_hint = base_area * (1.0 + hint_band_percent / 100.0)
+            lb_hint = base_area * (1.0 - hint_band_percent / 100.0)
+            ax.axhspan(lb_hint, ub_hint, facecolor='lightgreen', alpha=0.12)
+        y_min = min(min(areas), lb if base_area != 0 else min(areas))
+        y_max = max(max(areas), ub if base_area != 0 else max(areas))
+        margin = 0.01 * (y_max - y_min)
+        ax.set_ylim(y_min - margin, y_max + margin)
+    elif plot_type == 'percentage':
+        ax.axhline(+threshold_percent, color='red', linestyle=':', linewidth=1.0, label=f'+{threshold_percent:.1f}% 波动阈值')
+        ax.axhline(-threshold_percent, color='green', linestyle=':', linewidth=1.0, label=f'-{threshold_percent:.1f}% 波动阈值')
+        # 提示区（绿色带）更窄：±hint_band_percent
+        ax.axhspan(-hint_band_percent, +hint_band_percent, facecolor='lightgreen', alpha=0.12)
+        # 设定在 ±5% 附近的对称范围，留少量边距
+        max_abs = max(threshold_percent, max(abs(v) for v in y_data))
+        # 使用可配置的上下边距，保持阈值不变，仅调整与顶/底的距离
+        ax.set_ylim(-max_abs - y_axis_margin, max_abs + y_axis_margin)
+    else:  # normalized
+        # 基于当前阈值计算归一化映射，并用更窄的提示区
+        ax.set_ylim(0.0, 1.0)
+        ax.axhline(1.0, color='red', linestyle=':', linewidth=1.0, label=f'+{threshold_percent:.1f}% 波动阈值')
+        ax.axhline(0.0, color='green', linestyle=':', linewidth=1.0, label=f'-{threshold_percent:.1f}% 波动阈值')
+        if base_area != 0:
+            lb = base_area * (1.0 - threshold_percent / 100.0)
+            ub = base_area * (1.0 + threshold_percent / 100.0)
+            denom = (ub - lb)
+            if denom != 0:
+                lb_hint = base_area * (1.0 - hint_band_percent / 100.0)
+                ub_hint = base_area * (1.0 + hint_band_percent / 100.0)
+                lb_norm = (lb_hint - lb) / denom
+                ub_norm = (ub_hint - lb) / denom
+                ax.axhspan(lb_norm, ub_norm, facecolor='lightgreen', alpha=0.12)
+            else:
+                ax.axhspan(0.48, 0.52, facecolor='lightgreen', alpha=0.12)
+        else:
+            ax.axhspan(0.0, 1.0, facecolor='lightgreen', alpha=0.12)
 
-    if y_data:
-        plot_min, plot_max = np.min(y_data), np.max(y_data)
-
-        if plot_type == 'raw' and y_data[0] != 0:
-            base_area = y_data[0]
-            upper_bound = base_area * 1.05
-            lower_bound = base_area * 0.95
-            
-            ax.axhline(upper_bound, color='red', linestyle=':', linewidth=1.5, label='+5% 波动阈值')
-            ax.axhline(lower_bound, color='green', linestyle=':', linewidth=1.5, label='-5% 波动阈值')
-            
-            plot_min = min(plot_min, lower_bound)
-            plot_max = max(plot_max, upper_bound)
-
-        # --- 关键修改：使用可配置的 y_axis_margin ---
-        y_range = plot_max - plot_min
-        # 使用传入的 y_axis_margin 参数计算边距
-        margin = y_range * y_axis_margin
-        if margin == 0:
-            margin = abs(plot_min) * 0.2 or 1.0
-            
-        ax.set_ylim(plot_min - margin, plot_max + margin)
-
-    ax.legend(loc='upper right', fontsize=10, frameon=True)
+    # 图例按论文字号（9pt）
+    ax.legend(loc='upper right', fontsize=9, frameon=True)
     
     try:
         data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
@@ -429,23 +512,30 @@ def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0):
         data_dir = 'data'
         
     os.makedirs(data_dir, exist_ok=True)
-    save_path = os.path.join(data_dir, f'area_trend.jpg')
-    fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    base_path = os.path.join(data_dir, f'area_trend')
+    pdf_path = base_path + '.pdf'
+    svg_path = base_path + '.svg'
+    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.05)
+    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.05)
     plt.close(fig)
-    print(f"边距为 {int(y_axis_margin*100)}% 的面积趋势图已保存到: {save_path}")
+    print(f"面积趋势图（{plot_type}）已保存到: {pdf_path} 与 {svg_path}")
 
 def main():
     data_dir = DEFAULT_DATA_DIR
     color_list_to_extract = COLOR_TO_EXTRACT
     threshold_factor = THRESHOLD_FACTOR
+    threshold_percent = 5.0
+    y_axis_margin = 1.0
+    hint_band_percent = None
     plot_original_tri_flag = PLOT_ORIGINAL_TRI
     plot_filtered_tri_flag = PLOT_FILTERED_TRI
     plot_area_type = PLOT_AREA_TREND
+    paper_style_flag = False
     xmax = 70000.0  # 默认值
     ymax = 25000.0  # 默认值
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",\
-        longopts=['dir=','colors=','threshold=','plot-original-tri=','plot-filtered-tri=', 'plot-area-type=', 'xmax=', 'ymax='])
+        longopts=['dir=','colors=','threshold=','threshold-percent=','hint-band-percent=','y-margin=','plot-original-tri=','plot-filtered-tri=', 'plot-area-type=', 'paper-style=', 'xmax=', 'ymax='])
     except getopt.GetoptError as err:
         print(f"命令行参数错误: {err}")
         usage(sys.argv[0])
@@ -457,17 +547,42 @@ def main():
         elif op == "--dir":
             data_dir = value
         elif op == "--colors":
-            try:
-                color_list_to_extract = [int(c.strip()) for c in value.split(',')]
-            except ValueError:
-                print("错误: --colors 参数需要整数列表，例如: --colors=7,8。")
-                usage(sys.argv[0])
-                sys.exit(2)
+            v = value.strip().lower()
+            if v in ["all", "*", ""]:
+                color_list_to_extract = None  # 选择全部颜色
+            else:
+                try:
+                    color_list_to_extract = [int(c.strip()) for c in value.split(',')]
+                except ValueError:
+                    print("错误: --colors 参数需要整数列表，例如: --colors=7,8，或使用 all/* 表示全部颜色。")
+                    usage(sys.argv[0])
+                    sys.exit(2)
         elif op == "--threshold":
             try:
                 threshold_factor = float(value)
             except ValueError:
                 print("错误: --threshold 参数需要浮点数，例如: --threshold=3.5。")
+                usage(sys.argv[0])
+                sys.exit(2)
+        elif op == "--threshold-percent":
+            try:
+                threshold_percent = float(value)
+            except ValueError:
+                print("错误: --threshold-percent 参数需要浮点数，例如: --threshold-percent=4.0。")
+                usage(sys.argv[0])
+                sys.exit(2)
+        elif op == "--hint-band-percent":
+            try:
+                hint_band_percent = float(value)
+            except ValueError:
+                print("错误: --hint-band-percent 参数需要浮点数，例如: --hint-band-percent=3.0。")
+                usage(sys.argv[0])
+                sys.exit(2)
+        elif op == "--y-margin":
+            try:
+                y_axis_margin = float(value)
+            except ValueError:
+                print("错误: --y-margin 参数需要浮点数，例如: --y-margin=1.0。")
                 usage(sys.argv[0])
                 sys.exit(2)
         elif op == "--plot-original-tri":
@@ -481,6 +596,8 @@ def main():
                 print("错误: --plot-area-type 参数只能是 'raw', 'percentage' 或 'normalized'。")
                 usage(sys.argv[0])
                 sys.exit(2)
+        elif op == "--paper-style":
+            paper_style_flag = value.lower() == 'true'
         elif op == "--xmax":
             try:
                 xmax = float(value)
@@ -497,12 +614,12 @@ def main():
                 sys.exit(2)
     print("--- 开始处理ZDEM颗粒分布与面积守恒分析 ---")
     print(f"数据目录: {data_dir}")
-    print(f"提取颜色: {color_list_to_extract}")
+    print(f"提取颜色: {'全部颜色' if color_list_to_extract is None else color_list_to_extract}")
     print(f"阈值因子: {threshold_factor}")
     dat_to_particles_txt_batch(data_dir)
     results = process_multiple_files(data_dir=data_dir, color_list=color_list_to_extract, threshold_factor=threshold_factor)
     compare_results(results)
-    plot_area_trend(results, plot_type=plot_area_type)
+    plot_area_trend(results, plot_type=plot_area_type, y_axis_margin=y_axis_margin, threshold_percent=threshold_percent, paper_style=paper_style_flag, hint_band_percent=hint_band_percent)
     data_dir_abs = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_dir)
     triangulation_dir = os.path.join(data_dir_abs, '1_triangulation_plot')
     filtered_triangulation_dir = os.path.join(data_dir_abs, '2_filtered_triangulation_plot')
