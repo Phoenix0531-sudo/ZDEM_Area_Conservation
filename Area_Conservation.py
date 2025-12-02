@@ -21,6 +21,11 @@ from matplotlib.tri import Triangulation
 import matplotlib.ticker as mticker
 import warnings
 from scipy.spatial import Delaunay  # 添加Delaunay导入
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # 导入zdemio和zdemplot模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +34,7 @@ import zdemplot
 
 # 全局字体与字号统一（论文规范，避免 PDF 乱码并支持中文回退）
 plt.rcParams.update({
-    'font.family': ['Times New Roman', 'SimHei'],  # 英文 Times，中文使用黑体回退；如需 Arial 可改为 ['Arial','SimHei']
+    'font.family': ['Times New Roman', 'Microsoft YaHei', 'SimHei'],
     'font.size': 10,  # 论文常用：10pt 主字号
     'axes.labelsize': 10,
     'axes.titlesize': 10,
