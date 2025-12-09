@@ -381,13 +381,15 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
     plt.close(fig)
     print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{pdf_path}' 与 '{svg_path}'。")
 
-def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0, threshold_percent=5.0, paper_style=False, hint_band_percent=None):
+def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshold_percent=5.0, paper_style=False, hint_band_percent=None):
     """
-    绘制面积趋势曲线图（论文规范），支持三种视图：
-    - raw: 原始面积（平方单位），基于首个文件面积绘制 ±5% 阈值线；
-    - percentage: 相对首个文件面积的百分比变化，绘制 ±5% 阈值线；
-    - normalized: 以首面积的 [−5%, +5%] 映射到 [0, 1]，绘制 0 与 1 两条阈值线。
-
+    绘制面积趋势曲线图（论文规范），经过归一化和美化处理。
+    
+    改进点：
+    1. X轴：时间步归一化到 [0, 1] (Normalized Time Step)。
+    2. Y轴：面积变化归一化为百分比 (%)，直观展示 ±5% 波动。
+    3. 布局：增加两边留白 (Margins)，固定纵轴范围以展示曲线平缓。
+    
     输出：PDF 与 SVG，宽 17cm（≈6.69in），高 10cm（≈3.94in），字体 9pt。
     """
     if not results:
@@ -403,113 +405,101 @@ def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0, threshold_perce
         warnings.warn("未能从结果中提取有效的绘图数据，无法绘制面积趋势图。", UserWarning)
         return
 
-    base_area = float(areas[0])
-    # 根据当前阈值百分比计算归一化的上下界
-    lower_bound = base_area * (1.0 - threshold_percent / 100.0) if base_area != 0 else None
-    upper_bound = base_area * (1.0 + threshold_percent / 100.0) if base_area != 0 else None
+    # X轴归一化处理
+    if len(file_numbers) > 1:
+        start_step = file_numbers[0]
+        end_step = file_numbers[-1]
+        step_range = end_step - start_step
+        if step_range == 0:
+            x_data = [0.0 for _ in file_numbers]
+        else:
+            x_data = [(f - start_step) / step_range for f in file_numbers]
+    else:
+        x_data = [0.0]
 
+    base_area = float(areas[0])
+    
     # 提示区宽度默认与阈值一致
     if hint_band_percent is None:
         hint_band_percent = threshold_percent
 
-    # 根据绘图类型计算 y_data
+    # 强制使用百分比变化模式作为主要展示模式（响应用户需求）
+    # 无论命令行传入什么，为了达到用户"去00"和"展示+-5%波动"的要求，内部逻辑主要基于百分比
+    # 如果 plot_type 是 raw，我们仍然保留 raw 的部分逻辑，但建议用户使用 default
+    
+    # 计算百分比变化
+    if base_area != 0:
+        y_data_percent = [((a - base_area) / base_area) * 100.0 for a in areas]
+    else:
+        y_data_percent = [0.0 for _ in areas]
+
+    # 设置绘图数据
     if plot_type == 'raw':
         y_data = areas
         y_label = '面积 (平方单位)'
-    elif plot_type == 'percentage':
-        if base_area == 0:
-            warnings.warn("首个面积为0，无法计算百分比变化，回退到原始视图。", UserWarning)
-            y_data = areas
-            y_label = '面积 (平方单位)'
+    elif plot_type == 'normalized': # 映射到 0-1
+        min_a, max_a = min(areas), max(areas)
+        if max_a != min_a:
+             y_data = [(a - min_a)/(max_a - min_a) for a in areas]
         else:
-            y_data = [ ((a - base_area) / base_area) * 100.0 for a in areas ]
-            y_label = '面积相对变化 (%)'
-    else:  # normalized
-        if base_area != 0:
-            denom = (upper_bound - lower_bound)
-            if denom == 0:
-                y_data = [0.5 for _ in areas]
-            else:
-                y_data = [ (a - lower_bound) / denom for a in areas ]
-        else:
-            # 回退到最小-最大归一化
-            min_val = float(np.min(areas))
-            max_val = float(np.max(areas))
-            y_data = [0.0 for _ in areas] if max_val == min_val else [ (a - min_val) / (max_val - min_val) for a in areas ]
-        y_label = '归一化面积 (0.0–1.0)'
-
-    # 统计并打印相对首面积的百分比波动范围，便于核查是否越界
-    if base_area != 0:
-        percent_deviation = [ ((a - base_area) / base_area) * 100.0 for a in areas ]
-        min_dev = float(np.min(percent_deviation))
-        max_dev = float(np.max(percent_deviation))
-        print(f"面积相对首文件的波动范围: 最小 {min_dev:+.2f}% / 最大 {max_dev:+.2f}%")
-        if max_dev > threshold_percent or min_dev < -threshold_percent:
-            print(f"提示: 存在超过 ±{threshold_percent:.1f}% 的样本点，请核查数据或阈值设置。")
+             y_data = [0.5 for _ in areas]
+        y_label = '归一化面积 (0-1)'
+    else: # percentage (Default and Recommended)
+        y_data = y_data_percent
+        y_label = '面积相对变化 (%)'
 
     # 17cm ≈ 6.69in，选择 10cm ≈ 3.94in 高度
     fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
-    # 论文风格：更粗的轴线、刻度线、统一字号
+    
+    # 论文风格
     if paper_style:
         for spine in ax.spines.values():
             spine.set_linewidth(1.2)
         ax.tick_params(axis='both', which='both', width=1.0, labelsize=9)
-    line_label = '面积趋势' if plot_type in ['raw', 'percentage'] else '归一化面积趋势'
-    ax.plot(file_numbers, y_data, marker='o', linestyle='-', color='royalblue', linewidth=1.2, label=line_label)
+    
+    # 绘制主曲线
+    line_label = '面积波动'
+    # 使用较细的线和点，颜色使用深蓝色
+    ax.plot(x_data, y_data, marker='o', markersize=4, linestyle='-', color='#1f77b4', linewidth=1.5, label=line_label, alpha=0.9)
 
-    ax.set_xlabel('文件编号', fontsize=10 if paper_style else None)
+    ax.set_xlabel('归一化时间步 (0 → 1)', fontsize=10 if paper_style else None)
     ax.set_ylabel(y_label, fontsize=10 if paper_style else None)
-    # 去除标题
-    # ax.set_title(None)
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.6)
-    ax.ticklabel_format(style='plain', axis='y')
-    # 阈值线与Y轴范围
-    if plot_type == 'raw':
-        if base_area != 0:
-            # 阈值线位置（固定为 threshold_percent）
-            ub = base_area * (1.0 + threshold_percent / 100.0)
-            lb = base_area * (1.0 - threshold_percent / 100.0)
-            ax.axhline(ub, color='red', linestyle=':', linewidth=1.0, label=f'+{threshold_percent:.1f}% 波动阈值')
-            ax.axhline(lb, color='green', linestyle=':', linewidth=1.0, label=f'-{threshold_percent:.1f}% 波动阈值')
-            # 提示区（绿色带）更窄：基于 hint_band_percent
-            ub_hint = base_area * (1.0 + hint_band_percent / 100.0)
-            lb_hint = base_area * (1.0 - hint_band_percent / 100.0)
-            ax.axhspan(lb_hint, ub_hint, facecolor='lightgreen', alpha=0.12)
-        y_min = min(min(areas), lb if base_area != 0 else min(areas))
-        y_max = max(max(areas), ub if base_area != 0 else max(areas))
-        margin = 0.01 * (y_max - y_min)
-        ax.set_ylim(y_min - margin, y_max + margin)
-    elif plot_type == 'percentage':
-        ax.axhline(+threshold_percent, color='red', linestyle=':', linewidth=1.0, label=f'+{threshold_percent:.1f}% 波动阈值')
-        ax.axhline(-threshold_percent, color='green', linestyle=':', linewidth=1.0, label=f'-{threshold_percent:.1f}% 波动阈值')
-        # 提示区（绿色带）更窄：±hint_band_percent
-        ax.axhspan(-hint_band_percent, +hint_band_percent, facecolor='lightgreen', alpha=0.12)
-        # 设定在 ±5% 附近的对称范围，留少量边距
-        max_abs = max(threshold_percent, max(abs(v) for v in y_data))
-        # 使用可配置的上下边距，保持阈值不变，仅调整与顶/底的距离
-        ax.set_ylim(-max_abs - y_axis_margin, max_abs + y_axis_margin)
-    else:  # normalized
-        # 基于当前阈值计算归一化映射，并用更窄的提示区
-        ax.set_ylim(0.0, 1.0)
-        ax.axhline(1.0, color='red', linestyle=':', linewidth=1.0, label=f'+{threshold_percent:.1f}% 波动阈值')
-        ax.axhline(0.0, color='green', linestyle=':', linewidth=1.0, label=f'-{threshold_percent:.1f}% 波动阈值')
-        if base_area != 0:
-            lb = base_area * (1.0 - threshold_percent / 100.0)
-            ub = base_area * (1.0 + threshold_percent / 100.0)
-            denom = (ub - lb)
-            if denom != 0:
-                lb_hint = base_area * (1.0 - hint_band_percent / 100.0)
-                ub_hint = base_area * (1.0 + hint_band_percent / 100.0)
-                lb_norm = (lb_hint - lb) / denom
-                ub_norm = (ub_hint - lb) / denom
-                ax.axhspan(lb_norm, ub_norm, facecolor='lightgreen', alpha=0.12)
-            else:
-                ax.axhspan(0.48, 0.52, facecolor='lightgreen', alpha=0.12)
-        else:
-            ax.axhspan(0.0, 1.0, facecolor='lightgreen', alpha=0.12)
+    
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.5)
+    
+    # 设置 X 轴范围，增加右侧留白，左侧从0开始
+    ax.set_xlim(0, 1.05)
 
-    # 图例按论文字号（9pt）
-    ax.legend(loc='upper right', fontsize=9, frameon=True)
+    # 特殊处理 Percentage 模式的 Y 轴和装饰，满足用户"平缓"和"留白"要求
+    if plot_type == 'percentage' or plot_type == 'default':
+        # 1. 绘制基准线
+        ax.axhline(0, color='gray', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        # 2. 绘制阈值线 (红色虚线)
+        ax.axhline(threshold_percent, color='red', linestyle='--', linewidth=1.0, label=f'±{threshold_percent}% 阈值', alpha=0.7)
+        ax.axhline(-threshold_percent, color='red', linestyle='--', linewidth=1.0, alpha=0.7)
+        
+        # 3. 绘制安全带 (绿色区域)
+        ax.axhspan(-hint_band_percent, hint_band_percent, facecolor='green', alpha=0.08, label='安全波动区间')
+
+        # 4. Y轴范围设置：为了让曲线看起来"平缓"，Y轴范围应该显著大于数据波动
+        # 调整为用户指定的 ±10% 范围，倍数适当降低
+        max_fluctuation = max(max([abs(y) for y in y_data]), threshold_percent)
+        y_limit = max_fluctuation * 2.5 
+        y_limit = max(y_limit, 10.0) 
+        
+        ax.set_ylim(-y_limit, y_limit)
+        
+        # 格式化 Y 轴刻度，添加 % 号
+        ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=100, decimals=1))
+
+    # 其他模式的简单处理
+    elif plot_type == 'raw':
+        margin = (max(y_data) - min(y_data)) * 0.5
+        if margin == 0: margin = 1.0
+        ax.set_ylim(min(y_data) - margin, max(y_data) + margin)
+
+    ax.legend(loc='upper right', fontsize=9, frameon=True, fancybox=False, edgecolor='black')
     
     try:
         data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
@@ -520,10 +510,11 @@ def plot_area_trend(results, plot_type='raw', y_axis_margin=1.0, threshold_perce
     base_path = os.path.join(data_dir, f'area_trend')
     pdf_path = base_path + '.pdf'
     svg_path = base_path + '.svg'
-    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.05)
-    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.05)
+    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.1) # 增加 pad_inches 避免边缘被切
+    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.1)
     plt.close(fig)
     print(f"面积趋势图（{plot_type}）已保存到: {pdf_path} 与 {svg_path}")
+
 
 def main():
     data_dir = DEFAULT_DATA_DIR
