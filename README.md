@@ -197,6 +197,17 @@ pip install -r requirements.txt
 
 ---
 
+## Docker 使用 | Docker Usage
+
+本项目为 CLI/科学计算工具，Docker 提供便捷的构建验证环境。
+
+```bash
+docker build -t zdem-area-conservation .
+docker run --rm zdem-area-conservation
+```
+
+---
+
 ## 引用 | Citation
 
 If you use this tool in your research, please cite it as:
