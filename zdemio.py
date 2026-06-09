@@ -40,7 +40,7 @@ def usage(softwareName):
 def get_file_list(DataDir,FileNamePrefix,FileNameSuffix):
 	"""
 	2018/01/18
-	李长圣 @ 南京大学
+	Project contributors
 	功能：
 	得到文件夹下指定格式的文件列表
 
@@ -335,6 +335,7 @@ def GetColormapFile(colormap,VBOXscriptDir):
 	#    f.close()
 
 	return colormapfile
+
 
 
 

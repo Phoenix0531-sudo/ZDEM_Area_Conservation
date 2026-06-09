@@ -1,29 +1,28 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-2022/03/28 v2.2 beta 李长圣 == 广播查找索引，将创建 n个颗粒m个bond的超级大矩阵，导致内存溢出
+2022/03/28 v2.2 beta 广播查找索引，将创建 n个颗粒m个bond的超级大矩阵，导致内存溢出
 	1. plot_contactbond()中Id1Id2ToIndex1Index2()
-2022/03/26 v2.2 beta 李长圣 clear code rubbish, numpy array -> matrix
-2022/03/23 v2.2 beta 李长圣 修复plotbond中，--xmax=40000 --ymax=10000，不起作用问题。
+2022/03/26 v2.2 beta clear code rubbish, numpy array -> matrix
+2022/03/23 v2.2 beta 修复plotbond中，--xmax=40000 --ymax=10000，不起作用问题。
     1. 修改数据为numpy array
     2. 改为EllipseCollection 和 LineCollection绘制大量圆和线段，速度提高~9倍
     3. 增加 --ballplot 默认为ture
-2021/06/17 v2.1 李长圣 如果定义--xmax=40000 --ymax=10000，则不判断模型颗粒所占有区域大小，
+2021/06/17 v2.1 如果定义--xmax=40000 --ymax=10000，则不判断模型颗粒所占有区域大小，
                  直接绘制xmax=40000 ymax=10000大小的模型
-2021/04/24 v2.0 李长圣 修改为zdem2jpg，添加版本号version，添加license认证
-2020/12/29 李长圣　修改默认线程数改为cpu核心数max_workes=multiprocessing.cpu_count()
+2021/04/24 v2.0 修改为zdem2jpg，添加版本号version，添加license认证
+2020/12/29 修改默认线程数改为cpu核心数max_workes=multiprocessing.cpu_count()
 2020/07/22 徐雯峤　增加 --bondplot
-2020/07/07 李长圣　改为 --surfaceshow
+2020/07/07 改为 --surfaceshow
 2020/07/07 徐雯峤　增加 --showsurface
 2020/06/24 增加 --colormap
 2020/05/24 增加 --wallshow
 2019/08/26
-李长圣 @ 东华理工大学
+Project contributors
 实现并行绘图，增加 --xmove= --ymove=
 
 2019/01/07
-李长圣 @ 南京大学
-
+Project contributors
 功能：
 读取VBOX计算结果，生成jpg图片
 plot ball to jpg
@@ -402,7 +401,7 @@ def cmd_bondplot(file,CurrentStep,BALLIdN1, BALLxyN2,BALLRadN1,
 
 allnum=[]
 
-#2020-07-27 李长圣　分离绘制颗粒和绘制粘结
+#2020-07-27 分离绘制颗粒和绘制粘结
 #2019-08-26 实现并行绘图 max_workers=5
 #开辟的进程数应小于文件数
 max_workers=min(max_workers,len(VBOXfile))
@@ -436,5 +435,6 @@ if bondplot =='true':
 			#line = " ".join('%9s'%i for i in line)
 			#f.write(line+"\n")
 			f.write(" {0[0]:>15d} {0[1]:>15d} {0[2]:>15d} {0[3]:>15d} {0[4]:>15d}\n".format(line) )
+
 
 

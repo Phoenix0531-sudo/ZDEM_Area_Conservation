@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 2019/01/07
-李长圣 @ 南京大学
+Project contributors
 功能：
 绘制颗粒及墙体
 """
@@ -220,7 +220,7 @@ def plot_contactbond(fig, ax, BALLIdN1, BALLxyN2,
 						CONTACTId1Id2N2,BONDId1Id2N2,BONDFnN1,
 						linewidth=0.2):
 	"""
-	2022-3-32 李长圣 采用numpy
+	2022-3-32 采用numpy
 	输入参数：
 	[1] fig 
 	[2] ax
@@ -413,4 +413,5 @@ def zdem_fig_set(fig,ax,xmaxdefine, ymaxdefine, xmindefine, ymindefine,
 	if (rightshow=='false'): ax.spines['right'].set_visible(False)
 	if (bottomshow=='false'): ax.spines['bottom'].set_visible(False)
 	if (leftshow=='false'): ax.spines['left'].set_visible(False)
+
 
