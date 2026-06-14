@@ -38,23 +38,7 @@ def usage(softwareName):
 	print("	-h 打印此帮助信息")
 
 def get_file_list(DataDir,FileNamePrefix,FileNameSuffix):
-	"""
-	2018/01/18
-	Project contributors
-	功能：
-	得到文件夹下指定格式的文件列表
-
-	输入参数：
-	[1] DataDir  搜索目录
-	[2] FileNamePrefix 文件前缀
-	[3] FileNamePrefix 文件后缀
-	输出：
-	ListFile 文件列表
-
-	例如：
-	filelist = get_file_list(r'Q:\lichangsheng', FileNamePrefix='all_', FileNameSuffix='.dat')
-
-	"""
+	"""获取指定目录下符合前后缀的文件列表。"""
 	pathDir = os.listdir(DataDir)
 	ListFile = [] #result
 	for FileName in pathDir:

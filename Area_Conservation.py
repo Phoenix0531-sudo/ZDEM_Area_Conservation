@@ -22,7 +22,6 @@ except Exception:
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# 导入zdemio和zdemplot模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import zdemio
 import zdemplot
@@ -120,9 +119,7 @@ def create_triangulation(coords):
             warnings.warn("警告: 颗粒点存在大量重复或几乎共线，三角剖分可能不准确或失败。", UserWarning)
             return None
     try:
-        # 使用Delaunay三角剖分
         delaunay = Delaunay(coords)
-        # 将Delaunay结果转换为matplotlib的Triangulation对象
         tri = Triangulation(coords[:, 0], coords[:, 1], triangles=delaunay.simplices)
         if len(tri.triangles) == 0:
             warnings.warn("警告: 没有生成任何三角形。", UserWarning)
@@ -316,7 +313,7 @@ def compare_results(results):
         print(f"颗粒数量变化率: {particle_change_overall:+.2f}%")
 
 def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, filtered=False, xmax=70000.0, ymax=25000.0):
-    """保存三角网格图（叠加颗粒），按论文规范输出为矢量图（PDF/SVG），宽度≤17cm。"""
+    """保存三角网格图（叠加颗粒），输出 PDF + SVG。"""
     if coords is None or coords.shape[0] == 0:
         warnings.warn(f"没有坐标数据，无法绘制三角网格图到 '{filename}'。", UserWarning)
         return
@@ -328,10 +325,8 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
         colors = np.array([c.reshape(1, 1) for c in colors])
     # 只用一种颜色（绿色）
     color_list = [(0, 1, 0)]
-    # 17cm ≈ 6.69in；高度取 10cm ≈ 3.94in
     fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
     ax.set_facecolor('white')
-    # 显式设置坐标轴范围
     ax.set_xlim(0, xmax)
     ax.set_ylim(0, ymax)
     if coords is not None and radii is not None and colors is not None:
@@ -350,7 +345,6 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
         ax.triplot(tri.x, tri.y, tri.triangles, color='lime', linestyle='-', alpha=1.0, linewidth=0.2)
     else:
         warnings.warn(f"没有有效的三角网格数据，跳过绘制网格线到 '{filename}'。", UserWarning)
-    # 先绘制颗粒和三角网格，再设置坐标轴范围
     ax.set_xlim(0, xmax)
     ax.set_ylim(0, ymax)
     zdemplot.zdem_fig_set(
@@ -363,11 +357,9 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
         fontsize=8, linewidth=0.5, pagesize=6.69
     )
 
-    # 统一保存：派生 base 路径，输出为 PDF 与 SVG
     base = os.path.splitext(filename)[0]
     pdf_path = base + '.pdf'
     svg_path = base + '.svg'
-    # 使用紧致裁剪与边距
     fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.05)
     fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.05)
     plt.close(fig)
@@ -401,8 +393,6 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
         x_data = [0.0]
 
     base_area = float(areas[0])
-    
-    # 提示区宽度默认与阈值一致
     if hint_band_percent is None:
         hint_band_percent = threshold_percent
 
@@ -411,11 +401,10 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
     else:
         y_data_percent = [0.0 for _ in areas]
 
-    # 设置绘图数据
     if plot_type == 'raw':
         y_data = areas
         y_label = '面积 (平方单位)'
-    elif plot_type == 'normalized': # 映射到 0-1
+    elif plot_type == 'normalized':
         min_a, max_a = min(areas), max(areas)
         if max_a != min_a:
              y_data = [(a - min_a)/(max_a - min_a) for a in areas]
@@ -427,8 +416,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
         y_label = '面积相对变化 (%)'
 
     fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
-    
-    # 论文风格
+
     if paper_style:
         for spine in ax.spines.values():
             spine.set_linewidth(1.2)
