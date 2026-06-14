@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-2025/05/30
-
-功能：
 计算颗粒分布的面积守恒性，批量处理ZDEM模拟的.dat文件，
-生成并分析指定颜色颗粒的三角网格，输出优化前后三角网格图及面积统计。
-支持命令行参数配置数据目录、颗粒颜色、网格阈值等。
+生成并分析指定颜色颗粒的三角网格，输出三角网格图及面积统计。
 """
 
 import os
@@ -19,7 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation
 import matplotlib.ticker as mticker
 import warnings
-from scipy.spatial import Delaunay  # 添加Delaunay导入
+from scipy.spatial import Delaunay
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -31,10 +27,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import zdemio
 import zdemplot
 
-# 全局字体与字号统一（论文规范，避免 PDF 乱码并支持中文回退）
+# 全局字体与字号
 plt.rcParams.update({
     'font.family': ['Times New Roman', 'Microsoft YaHei', 'SimHei'],
-    'font.size': 10,  # 论文常用：10pt 主字号
+    'font.size': 10,
     'axes.labelsize': 10,
     'axes.titlesize': 10,
     'xtick.labelsize': 9,
@@ -43,11 +39,9 @@ plt.rcParams.update({
     'axes.unicode_minus': False,
     'savefig.bbox': 'tight',
     'savefig.pad_inches': 0.05,
-    # 使用 TrueType 嵌入，避免 Type3 字体导致 PDF 乱码
     'pdf.fonttype': 42,
     'ps.fonttype': 42,
     'svg.fonttype': 'none',
-    # 轴线与刻度线宽度（论文风格）
     'axes.linewidth': 1.0,
     'xtick.major.width': 0.8,
     'ytick.major.width': 0.8,
@@ -55,9 +49,8 @@ plt.rcParams.update({
     'ytick.minor.width': 0.6,
 })
 
-# 常量定义 (将被命令行参数覆盖)
-# 使用 None 表示默认选择全部颜色
-COLOR_TO_EXTRACT = None  # 默认提取全部颜色
+# 常量 (命令行参数可覆盖)
+COLOR_TO_EXTRACT = None
 THRESHOLD_FACTOR = 3.0        # 三角网格边长阈值因子
 DEFAULT_DATA_DIR = "data"       # 默认数据目录
 PLOT_ORIGINAL_TRI = True       # 是否绘制原始三角网格
@@ -381,16 +374,7 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
     print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{pdf_path}' 与 '{svg_path}'。")
 
 def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshold_percent=5.0, paper_style=False, hint_band_percent=None):
-    """
-    绘制面积趋势曲线图（论文规范），经过归一化和美化处理。
-    
-    改进点：
-    1. X轴：时间步归一化到 [0, 1] (Normalized Time Step)。
-    2. Y轴：面积变化归一化为百分比 (%)，直观展示 ±5% 波动。
-    3. 布局：增加两边留白 (Margins)，固定纵轴范围以展示曲线平缓。
-    
-    输出：PDF 与 SVG，宽 17cm（≈6.69in），高 10cm（≈3.94in），字体 9pt。
-    """
+    """绘制面积趋势曲线，输出 PDF + SVG。"""
     if not results:
         print("没有可用于绘制面积趋势图的结果。")
         return
@@ -404,7 +388,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
         warnings.warn("未能从结果中提取有效的绘图数据，无法绘制面积趋势图。", UserWarning)
         return
 
-    # X轴归一化处理
+    # X轴归一化
     if len(file_numbers) > 1:
         start_step = file_numbers[0]
         end_step = file_numbers[-1]
@@ -422,11 +406,6 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
     if hint_band_percent is None:
         hint_band_percent = threshold_percent
 
-    # 强制使用百分比变化模式作为主要展示模式（响应用户需求）
-    # 无论命令行传入什么，为了达到用户"去00"和"展示+-5%波动"的要求，内部逻辑主要基于百分比
-    # 如果 plot_type 是 raw，我们仍然保留 raw 的部分逻辑，但建议用户使用 default
-    
-    # 计算百分比变化
     if base_area != 0:
         y_data_percent = [((a - base_area) / base_area) * 100.0 for a in areas]
     else:
@@ -443,11 +422,10 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
         else:
              y_data = [0.5 for _ in areas]
         y_label = '归一化面积 (0-1)'
-    else: # percentage (Default and Recommended)
+    else:
         y_data = y_data_percent
         y_label = '面积相对变化 (%)'
 
-    # 17cm ≈ 6.69in，选择 10cm ≈ 3.94in 高度
     fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
     
     # 论文风格
@@ -455,44 +433,32 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
         for spine in ax.spines.values():
             spine.set_linewidth(1.2)
         ax.tick_params(axis='both', which='both', width=1.0, labelsize=9)
-    
-    # 绘制主曲线
-    line_label = '面积波动'
-    # 使用较细的线和点，颜色使用深蓝色
-    ax.plot(x_data, y_data, marker='o', markersize=4, linestyle='-', color='#1f77b4', linewidth=1.5, label=line_label, alpha=0.9)
+
+    ax.plot(x_data, y_data, marker='o', markersize=4, linestyle='-', color='#1f77b4', linewidth=1.5, label='面积波动', alpha=0.9)
 
     ax.set_xlabel('归一化时间步 (0 → 1)', fontsize=10 if paper_style else None)
     ax.set_ylabel(y_label, fontsize=10 if paper_style else None)
-    
+
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.5)
-    
-    # 设置 X 轴范围，增加右侧留白，左侧从0开始
+
     ax.set_xlim(0, 1.05)
 
-    # 特殊处理 Percentage 模式的 Y 轴和装饰，满足用户"平缓"和"留白"要求
     if plot_type == 'percentage' or plot_type == 'default':
-        # 1. 绘制基准线
         ax.axhline(0, color='gray', linestyle='-', linewidth=0.8, alpha=0.5)
-        
-        # 2. 绘制阈值线 (红色虚线)
+
         ax.axhline(threshold_percent, color='red', linestyle='--', linewidth=1.0, label=f'±{threshold_percent}% 阈值', alpha=0.7)
         ax.axhline(-threshold_percent, color='red', linestyle='--', linewidth=1.0, alpha=0.7)
-        
-        # 3. 绘制安全带 (绿色区域)
+
         ax.axhspan(-hint_band_percent, hint_band_percent, facecolor='green', alpha=0.08, label='安全波动区间')
 
-        # 4. Y轴范围设置：为了让曲线看起来"平缓"，Y轴范围应该显著大于数据波动
-        # 调整为用户指定的 ±10% 范围，倍数适当降低
         max_fluctuation = max(max([abs(y) for y in y_data]), threshold_percent)
-        y_limit = max_fluctuation * 2.5 
-        y_limit = max(y_limit, 10.0) 
-        
+        y_limit = max_fluctuation * 2.5
+        y_limit = max(y_limit, 10.0)
+
         ax.set_ylim(-y_limit, y_limit)
-        
-        # 格式化 Y 轴刻度，添加 % 号
+
         ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=100, decimals=1))
 
-    # 其他模式的简单处理
     elif plot_type == 'raw':
         margin = (max(y_data) - min(y_data)) * 0.5
         if margin == 0: margin = 1.0
@@ -509,7 +475,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
     base_path = os.path.join(data_dir, f'area_trend')
     pdf_path = base_path + '.pdf'
     svg_path = base_path + '.svg'
-    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.1) # 增加 pad_inches 避免边缘被切
+    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.1)
     fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.1)
     plt.close(fig)
     print(f"面积趋势图（{plot_type}）已保存到: {pdf_path} 与 {svg_path}")

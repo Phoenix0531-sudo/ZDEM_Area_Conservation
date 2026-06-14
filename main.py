@@ -1,41 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-2022/03/28 v2.2 beta 广播查找索引，将创建 n个颗粒m个bond的超级大矩阵，导致内存溢出
-	1. plot_contactbond()中Id1Id2ToIndex1Index2()
-2022/03/26 v2.2 beta clear code rubbish, numpy array -> matrix
-2022/03/23 v2.2 beta 修复plotbond中，--xmax=40000 --ymax=10000，不起作用问题。
-    1. 修改数据为numpy array
-    2. 改为EllipseCollection 和 LineCollection绘制大量圆和线段，速度提高~9倍
-    3. 增加 --ballplot 默认为ture
-2021/06/17 v2.1 如果定义--xmax=40000 --ymax=10000，则不判断模型颗粒所占有区域大小，
-                 直接绘制xmax=40000 ymax=10000大小的模型
-2021/04/24 v2.0 修改为zdem2jpg，添加版本号version，添加license认证
-2020/12/29 修改默认线程数改为cpu核心数max_workes=multiprocessing.cpu_count()
-2020/07/22 徐雯峤　增加 --bondplot
-2020/07/07 改为 --surfaceshow
-2020/07/07 徐雯峤　增加 --showsurface
-2020/06/24 增加 --colormap
-2020/05/24 增加 --wallshow
-2019/08/26
-Project contributors
-实现并行绘图，增加 --xmove= --ymove=
-
-2019/01/07
-Project contributors
-功能：
-读取VBOX计算结果，生成jpg图片
-plot ball to jpg
-
-输入参数：
-[1] DataDir  VBOX计算结果所在目录
-
-输出：
-[1] jpg格式文件
-
-例如：
-./main.py --dir=./example 
-./main.py --dir=./example --xmax=40000 --ymax=10000 --xmove=-1000.0 --ymove=-1000.0 --xmin=0.0 --ymin=0.0 --major_locator=10000.0 --minor_locator=1000.0 --fontsize=12 --pagesize=14 --topshow=false --wallshow=true --colormap=./mycolormap.txt --bondplot=true --ballplot=true
+读取 VBOX 计算结果，批量生成颗粒与 bond 的 jpg 图片，支持并行绘图。
 """
 
 import logging
@@ -56,9 +22,6 @@ import checkLicense
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
 
-#2022-03-25 add logging
-#logging.basicConfig(level=logging.INFO)
-#创建一个logger日志对象
 logger = logging.getLogger('test_logger')
 logger.setLevel(logging.WARNING)  #设置默认的日志级别 CRITICAL > ERROR > WARNING > INFO > DEBUG
 #创建StreamHandler对象
@@ -70,8 +33,6 @@ sh.setLevel(logging.INFO)
 sh.flush()
 logger.addHandler(sh)  #logger日志对象加载StreamHandler对象
 
-#2021-04-24
-#添加软件版本号
 softwareName=sys.argv[0]
 version = '2.2'
 
@@ -81,8 +42,6 @@ total_list = []
 #print ("VBOXscriptDir",VBOXscriptDir)
 #print ("参数个数：",len(sys.argv))
 
-#2021-04-24
-#验证许可证
 #reg=checkLicense.register(version,VBOXscriptDir)
 #reg.checkAuthored()
 
@@ -115,20 +74,6 @@ ymindefine='false'
 major_locator=10000.0
 minor_locator=1000.0
 fontsize=9
-#2020-12-29 lichangsheng 
-#默认线程数改为cpu核心数
-#max_workers=24
-#是当前节点的核心数，不是可用核心数
-#max_workers = multiprocessing.cpu_count()
-
-#2021-06-17 如果#SBATCH -c 1分配一个核给程序，srun -n 1 zdem2jpg --dir=./data
-#会开辟很多线程，然而slurm仅仅分配给程序一个核，所以各个线程存在竞争，
-#弹出Out Of Memory错误，无法绘图。
-#采用multiprocessing.cpu_count() slurm无法获取分配的核心数
-#改为获取可用核心数
-pid=0 #当前进程
-#print("useable cpus %d" %(len(os.sched_getaffinity(pid))) )
-# max_workers=len(os.sched_getaffinity(pid))
 max_workers = 4
 #print("max_workers:%d" %(max_workers) )
 
@@ -401,9 +346,6 @@ def cmd_bondplot(file,CurrentStep,BALLIdN1, BALLxyN2,BALLRadN1,
 
 allnum=[]
 
-#2020-07-27 分离绘制颗粒和绘制粘结
-#2019-08-26 实现并行绘图 max_workers=5
-#开辟的进程数应小于文件数
 max_workers=min(max_workers,len(VBOXfile))
 print("parallel num:",max_workers)
 print("file num:",len(VBOXfile))

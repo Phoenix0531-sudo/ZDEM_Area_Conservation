@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-2019/01/07
-Project contributors
-功能：
 绘制颗粒及墙体
 """
 
@@ -22,28 +19,7 @@ from matplotlib.patches import Circle
 from matplotlib.lines import Line2D
 
 def get_color_map(filename):
-	"""
-	2018/05/28
-	LI ChangSheng @ nanyang technological university
-	use：
-	get the color map of colorfile
-
-	input：
-	[1]ColorFileName
-	output：
-	[] colorlist  
-	colorlist[0]=(0.85,0.85,0.85)
-	...
-	colorlist[9]=(1.00 0.00 1.00 )
-	[1]ColorMap 
-	colormap['light gray']  = ((0.85,0.85,0.85),0)
-	...
-	colormap['violet']  = ((1.00 0.00 1.00 ),0)
-
-	example：
-	ColorFileName  = r'./ColorRicebal.txt'
-
-	"""
+	"""获取颜色映射表"""
 	xfile = open(filename, "r")#, encoding = 'utf-8')
 	colorlist = []
 	for line in xfile:
@@ -220,25 +196,13 @@ def plot_contactbond(fig, ax, BALLIdN1, BALLxyN2,
 						CONTACTId1Id2N2,BONDId1Id2N2,BONDFnN1,
 						linewidth=0.2):
 	"""
-	2022-3-32 采用numpy
-	输入参数：
-	[1] fig 
-	[2] ax
-	[2] BALLIdN1        nx1
-	[3] BALLxyN2        nx2 [x,y]
-	[4] CONTACTId1Id2N2 nx2 [id1, id2]
-	[5] BONDId1Id2N2    nx2 [id1, id2]
-	[6] BONDFnN1        nx1
-	输出参数：
-	FnGEZero 受压bond blue
-	FnLTZero 受拉bond red
+	将 BOND Id1Id2 映射到 BALL 索引，绘制 contact 线段和 bond 线段。
 	"""
 	BALLIdN1=BALLIdN1.T #列变成行
 	
 #	#plot contact
 
-	# 2022-03-28
-	#将[id1 id2]转换为[index1 index2]
+	# 将[id1 id2]转换为[index1 index2]
 	CONTACTIDId1Id2index = Id1Id2ToIndex1Index2(BALLIdN1,CONTACTId1Id2N2)
 	
 	CONTACTXYid1 = BALLxyN2[CONTACTIDId1Id2index[:,0],:] # nx2 [x,y]
@@ -259,8 +223,7 @@ def plot_contactbond(fig, ax, BALLIdN1, BALLxyN2,
 	#plot bond
 	bondnum=BONDFnN1.shape[0]
 	
-	# 2022-03-28
-	#将[id1 id2]转换为[index1 index2]
+	# 将[id1 id2]转换为[index1 index2]
 	BONDId1Id2index = Id1Id2ToIndex1Index2(BALLIdN1,BONDId1Id2N2)
 
 	BONDXYid1 = BALLxyN2[BONDId1Id2index[:,0],:] # nx2  [x, y]
@@ -289,26 +252,7 @@ def plot_contactbond(fig, ax, BALLIdN1, BALLxyN2,
 	return FnGEZero,FnLTZero
 
 def Id1Id2ToIndex1Index2(BALLIdN1,Id1Id2N2):
-	"""
-	将[id1 id2]转换为[index1 index2]
-	输入参数：
-	[1] BALLIdN1 nx1
-	[2] Id1Id2N2 nx2 [id1, id2]
-	输出参数：
-	[1] Index1Index2N2 nx2 [index1, index2]
-	"""
-	############################################################################
-	# 2022-03-28
-	# 修改前
-	# == 广播查找索引，将创建 n个颗粒m个bond的超级大矩阵，导致内存溢出
-	# 修改为循环法
-		#np.where([1xn]==[mx1])[-1]
-	#	BONDId1=BONDId1Id2N2[:,0]
-	#	BONDId2=BONDId1Id2N2[:,1]
-	# 以下==运算导致内存溢出
-	#	BONDID1index=np.where(BALLIdN1==BONDId1)[-1]
-	#	BONDID2index=np.where(BALLIdN1==BONDId2)[-1]
-	# 修改后
+	"""将 [id1 id2] 转换为 [index1 index2]，逐行查找避免广播大矩阵内存溢出。"""
 	bondnum=Id1Id2N2.shape[0]
 	Id1Id2indexN2=np.mat(np.zeros_like(Id1Id2N2,dtype=int)) # nx2
 	for i in np.arange(bondnum):
