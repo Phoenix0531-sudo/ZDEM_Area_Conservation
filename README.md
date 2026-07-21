@@ -2,6 +2,12 @@
 
 # ZDEM 颗粒分布与面积守恒分析
 
+**Particle distribution and area conservation analysis for ZDEM**
+
+[English](README.md) | [中文](README.zh-CN.md)
+
+![CI](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml/badge.svg)
+
 **Area Conservation Analysis for Z-Discrete Element Method (ZDEM) Simulations**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

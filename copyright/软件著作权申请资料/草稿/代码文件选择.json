@@ -1,0 +1,76 @@
+{
+  "project_root": "/workspace",
+  "selection_required": true,
+  "model_selection_required": true,
+  "confirmation_required": true,
+  "user_confirmed": true,
+  "target_pages": 60,
+  "lines_per_page": 50,
+  "target_lines": 3000,
+  "estimated_selected_lines": 1719,
+  "estimated_selected_pages": 35,
+  "estimated_all_candidate_lines": 1719,
+  "estimated_all_candidate_pages": 35,
+  "supplement_rule": "候选源码不足60页（共35页），生成全部代码材料。",
+  "confirmation_stage": "code-selection",
+  "next_action": "请由模型填写 草稿/代码文件选择.json 的抽取选择和选择理由，再让用户确认；确认后运行 confirm_stage.py --stage code-selection。",
+  "instructions": "The script only inventories source files. The model must choose selected/model_reason before user confirmation. Selected files are copied in full.",
+  "files": [
+    {
+      "path": "Area_Conservation.py",
+      "selected": true,
+      "line_count": 606,
+      "priority": 100,
+      "selection_tier": "core",
+      "evidence": "主分析脚本，包含颗粒读取、三角剖分、边长过滤、面积计算、趋势绘图全部核心功能",
+      "model_reason": "软件主入口和核心算法实现文件，涵盖Delaunay三角剖分、边长阈值过滤、面积计算和趋势可视化全部核心逻辑，是体现软件真实功能的最重要源码"
+    },
+    {
+      "path": "main.py",
+      "selected": true,
+      "line_count": 382,
+      "priority": 90,
+      "selection_tier": "core",
+      "evidence": "ZDEM原始数据批量绘图程序，展示完整的数据处理与可视化链路",
+      "model_reason": "批量绘图入口文件，展示从ZDEM .dat文件到各类图表的完整数据处理链路，是软件功能的重要组成部分"
+    },
+    {
+      "path": "zdemio.py",
+      "selected": true,
+      "line_count": 328,
+      "priority": 90,
+      "selection_tier": "core",
+      "evidence": "ZDEM .dat 文件读取与格式转换模块，含墙体、接触、粘结数据解析",
+      "model_reason": "ZDEM数据I/O核心模块，实现.dat文件的底层解析和格式转换，是数据输入的关键环节，体现软件与ZDEM格式的对接能力"
+    },
+    {
+      "path": "zdemplot.py",
+      "selected": true,
+      "line_count": 361,
+      "priority": 90,
+      "selection_tier": "core",
+      "evidence": "颗粒、墙体、网格的绘制函数及坐标轴样式设置",
+      "model_reason": "可视化核心模块，封装了颗粒绘制、网格绘制和坐标轴样式设置函数，支撑三角网格图和面积趋势图的生成"
+    },
+    {
+      "path": "setup.py",
+      "selected": true,
+      "line_count": 36,
+      "priority": 60,
+      "selection_tier": "supplement",
+      "evidence": "Python包安装配置，含软件元信息（名称、版本、依赖）",
+      "model_reason": "包安装配置文件，记录了软件名称、版本号、作者和依赖关系等元信息"
+    },
+    {
+      "path": "zdem_area_conservation/__init__.py",
+      "selected": true,
+      "line_count": 6,
+      "priority": 60,
+      "selection_tier": "supplement",
+      "evidence": "Python包初始化文件",
+      "model_reason": "包初始化文件，标记zdem_area_conservation为Python包，是项目结构的组成部分"
+    }
+  ],
+  "confirmation_note": "6个源文件全选，35页，生成全部代码文档",
+  "confirmed_at": "2026-06-22T11:20:49+00:00"
+}

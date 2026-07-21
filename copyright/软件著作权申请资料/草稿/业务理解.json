@@ -1,0 +1,327 @@
+{
+  "software_name": "ZDEM 颗粒分布与面积守恒分析系统",
+  "business_understanding_required": true,
+  "source_documents": [
+    {
+      "path": "CHANGELOG.md",
+      "size": 42
+    },
+    {
+      "path": "README.md",
+      "size": 9474
+    },
+    {
+      "path": "requirements.txt",
+      "size": 45
+    },
+    {
+      "path": "res/ColorRicebal.txt",
+      "size": 166
+    }
+  ],
+  "project_evidence_file": "业务理解证据.md",
+  "product_positioning": "面向ZDEM离散元数值模拟研究的颗粒覆盖面积守恒性分析命令行工具，自动完成从原始.dat文件到面积趋势可视化的完整分析流程",
+  "industry": "科学研究/数值模拟/离散元方法",
+  "target_users": [
+    "岩土工程研究人员",
+    "颗粒材料力学研究者",
+    "离散元数值模拟工程师",
+    "相关专业研究生"
+  ],
+  "core_value": "将ZDEM模拟中分散的.dat结果文件自动批量处理，通过Delaunay三角剖分和边长阈值过滤算法计算颗粒体系的有效覆盖面积，并以学术论文规范的矢量图表展示面积变化趋势，帮助研究者快速判断模拟的物理合理性",
+  "business_features": [
+    "ZDEM结果文件批量解析",
+    "颗粒颜色筛选",
+    "Delaunay三角剖分",
+    "边长阈值过滤",
+    "有效覆盖面积计算",
+    "三角网格可视化",
+    "面积趋势分析"
+  ],
+  "business_feature_details": {
+    "ZDEM结果文件批量解析": "自动扫描指定目录下所有ZDEM .dat文件，解析其中的墙体、颗粒、接触和粘结数据，转换为包含颗粒坐标、半径和颜色编号的中间文件",
+    "颗粒颜色筛选": "支持按颜色编号筛选特定类型颗粒（如不同粒径组），或选择全部颗粒参与分析",
+    "Delaunay三角剖分": "基于scipy.spatial实现Delaunay三角剖分，以颗粒坐标为节点生成三角网格",
+    "边长阈值过滤": "以颗粒平均半径的指定倍数（默认3倍）为边长阈值，剔除三边均超标的异常三角形，消除颗粒间的不合理跨接",
+    "有效覆盖面积计算": "对过滤后保留的三角形计算叉积面积并求和，得到该时间步颗粒体系的有效覆盖面积",
+    "三角网格可视化": "生成原始三角网格和过滤后三角网格的PDF+SVG矢量图，叠加颗粒位置，支持自定义绘图区域",
+    "面积趋势分析": "以首个时间步面积为基准，计算各步面积变化率，绘制趋势曲线并在图中标注安全波动区间和阈值线"
+  },
+  "operation_flow": [
+    "用户将ZDEM模拟产生的.dat文件放入data/目录",
+    "在命令行执行主分析脚本，指定数据目录、颜色筛选条件和阈值因子等参数",
+    "程序自动将.dat文件转换为_particles.txt中间格式",
+    "程序读取中间文件，对每个时间步进行Delaunay三角剖分、边长过滤和面积计算",
+    "程序在控制台输出面积和颗粒数量的变化分析结果",
+    "程序在data/目录下生成三角网格图和面积趋势图的PDF+SVG文件"
+  ],
+  "application_purpose": "为ZDEM离散元数值模拟研究人员提供颗粒覆盖面积守恒性的自动化分析工具，验证模拟结果的物理合理性",
+  "main_functions": "1. 批量导入ZDEM .dat原始结果文件，自动提取颗粒坐标与属性；2. 按颗粒颜色编号筛选分析对象，支持全选或指定颜色；3. 基于Delaunay三角剖分算法构建颗粒网格，通过边长阈值（默认3倍平均半径）过滤异常跨接三角形；4. 计算每个时间步的颗粒有效覆盖面积；5. 生成学术论文级PDF+SVG矢量格式的三角网格图和面积趋势图；6. 在面积趋势图中自动标注安全波动区间和阈值参考线；7. 命令行参数化控制，支持自定义数据目录、颜色、阈值、图表类型和论文风格输出",
+  "technical_characteristics": "基于Python科学计算生态（numpy+scipy+matplotlib），采用Delaunay三角剖分算法和边长阈值过滤策略，输出PDF+SVG双格式矢量图满足学术出版要求，通过命令行参数实现全流程可配置",
+  "software_technical_option": "应用软件",
+  "software_category": "应用软件",
+  "manual_sections": [
+    {
+      "title": "软件用途说明",
+      "intent": "说明本工具在ZDEM离散元模拟研究中的定位和典型使用场景",
+      "paragraphs": [
+        "ZDEM 颗粒分布与面积守恒分析系统是一款面向离散元数值模拟研究的科学计算工具。在ZDEM模拟中，颗粒体系在加载过程中的面积守恒性直接反映模拟的物理合理性，但原始ZDEM输出为按时间步分片的.dat二进制格式，研究者无法直接获取颗粒覆盖面积随加载进程的变化趋势。本系统自动完成从.dat文件解析到面积趋势可视化的完整分析链路，帮助研究者快速判断模拟结果的可靠性。"
+      ]
+    },
+    {
+      "title": "系统要求与运行环境",
+      "intent": "列出软件运行所需的操作系统、Python版本和依赖包",
+      "paragraphs": [],
+      "include_operation_modules": false
+    },
+    {
+      "title": "功能特点",
+      "intent": "按业务功能模块概述软件的主要特点和能力",
+      "paragraphs": [],
+      "include_feature_overview": true
+    },
+    {
+      "title": "操作说明",
+      "intent": "按真实使用流程逐步说明操作方法",
+      "paragraphs": [],
+      "include_operation_modules": true,
+      "include_operation_flow": true
+    }
+  ],
+  "manual_modules": [
+    {
+      "title": "准备数据",
+      "evidence": [
+        "README.md 数据准备章节",
+        "Area_Conservation.py DEFAULT_DATA_DIR常量",
+        "dat_to_particles_txt_batch函数"
+      ],
+      "purpose": "将ZDEM模拟输出的.dat文件放入指定目录，供程序批量读取和转换",
+      "usage": "用户完成ZDEM数值模拟后，从模拟输出目录中将生成的系列.dat结果文件复制到本项目的data/目录下",
+      "entry": "用户在操作系统文件资源管理器中操作文件",
+      "visible_elements": [
+        "data/目录",
+        ".dat文件列表"
+      ],
+      "operation_steps": [
+        "在项目根目录确认data文件夹已存在（如不存在则手动创建）",
+        "将ZDEM模拟产生的所有.dat文件复制到data/目录中",
+        "确认.dat文件已正确放置"
+      ],
+      "validation_rules": [
+        "data/目录必须存在",
+        "data/目录中至少包含1个.dat文件",
+        ".dat文件须为ZDEM标准输出格式"
+      ],
+      "feedback": [
+        "程序启动后会在控制台显示找到的.dat文件数量及文件名列表",
+        "文件格式不正确时控制台会输出警告信息"
+      ],
+      "screenshot": "文件资源管理器截图，展示data目录下的.dat文件列表"
+    },
+    {
+      "title": "运行分析",
+      "evidence": [
+        "README.md 快速开始章节",
+        "Area_Conservation.py main()函数",
+        "Area_Conservation.py usage()函数"
+      ],
+      "purpose": "执行颗粒覆盖面积守恒性分析的主流程，包括数据转换、三角剖分和面积计算",
+      "usage": "用户在命令行终端中启动分析程序，根据研究需要指定数据目录、颗粒颜色和阈值参数",
+      "entry": "用户打开命令行终端（命令提示符或PowerShell），进入项目根目录，输入python命令启动程序",
+      "visible_elements": [
+        "命令行终端窗口",
+        "程序运行进度和结果文本",
+        "各时间步的面积和颗粒数量统计表",
+        "相邻步变化率分析结果",
+        "总体变化率汇总"
+      ],
+      "operation_steps": [
+        "打开命令行终端",
+        "进入项目根目录（cd命令）",
+        "输入 python Area_Conservation.py 并回车（使用默认参数运行）",
+        "或输入 python Area_Conservation.py --colors=7,8 --threshold=3.5 指定颜色和阈值",
+        "等待程序执行完毕"
+      ],
+      "validation_rules": [
+        "Python 3.8+环境已安装且依赖包齐全",
+        "data/目录下存在.dat文件",
+        "命令行参数格式正确，颜色编号为整数"
+      ],
+      "feedback": [
+        "程序按顺序显示：数据目录与筛选条件确认信息",
+        "各时间步文件名、颗粒数量和有效覆盖面积表格",
+        "相邻文件步的面积和颗粒数量变化率",
+        "首尾时间步的总体变化率汇总",
+        "图表保存路径提示"
+      ],
+      "screenshot": "命令行终端截图，展示完整执行过程和输出结果"
+    },
+    {
+      "title": "查看三角网格图",
+      "evidence": [
+        "README.md 图表输出章节",
+        "Area_Conservation.py save_triangulation_plot函数",
+        "zdemplot.py绘图模块"
+      ],
+      "purpose": "查看每个时间步的原始和过滤后Delaunay三角剖分结果，验证网格生成和边长过滤效果",
+      "usage": "用户分析完成后，打开生成的三角网格图查看颗粒空间分布和三角剖分质量，确认边长阈值参数设置合理",
+      "entry": "用户在data/1_triangulation_plot/目录中查看原始三角网格图，在data/2_filtered_triangulation_plot/目录中查看过滤后三角网格图",
+      "visible_elements": [
+        "颗粒位置散点（绿色圆点）",
+        "三角网格边线（绿色细线）",
+        "坐标轴与刻度标签"
+      ],
+      "operation_steps": [
+        "在文件资源管理器中进入data/1_triangulation_plot/目录",
+        "双击.pdf或.svg文件用PDF阅读器或浏览器打开",
+        "观察颗粒分布和三角网格连接情况",
+        "进入data/2_filtered_triangulation_plot/目录查看过滤后效果",
+        "对比过滤前后网格变化，判断阈值因子是否合理"
+      ],
+      "validation_rules": [
+        "分析程序已成功运行完成",
+        "PDF/SVG文件存在且可正常打开"
+      ],
+      "feedback": [
+        "PDF/SVG文件以矢量格式显示，放大不模糊，可直接用于学术论文插图",
+        "过滤后网格图应无明显不合理跨接三角形"
+      ],
+      "screenshot": "PDF阅读器截图，展示三角网格图中的颗粒散点和网格线"
+    },
+    {
+      "title": "分析面积趋势",
+      "evidence": [
+        "README.md 图表输出章节",
+        "Area_Conservation.py plot_area_trend函数",
+        "compare_results函数"
+      ],
+      "purpose": "通过面积变化趋势图判断模拟过程中颗粒覆盖面积是否守恒，识别异常时间步",
+      "usage": "用户打开面积趋势图，观察面积变化曲线是否在绿色安全波动区间内，判断ZDEM模拟的物理合理性",
+      "entry": "用户在data/目录中打开area_trend.pdf或area_trend.svg文件",
+      "visible_elements": [
+        "面积变化曲线（蓝色折线带圆点标记）",
+        "零参考线（灰色实线）",
+        "正负阈值线（红色虚线）",
+        "安全波动区间（绿色半透明带）",
+        "图例说明"
+      ],
+      "operation_steps": [
+        "在文件资源管理器中进入data/目录",
+        "双击area_trend.pdf用PDF阅读器打开",
+        "观察蓝色面积波动曲线：X轴为归一化时间步（0到1），Y轴为面积相对变化百分比",
+        "判断曲线是否长期超出±阈值范围（红色虚线）：超出则可能存在面积不守恒问题",
+        "关注曲线是否稳定在绿色安全区附近小幅波动：是则说明模拟物理合理性较好"
+      ],
+      "validation_rules": [
+        "面积趋势图已经生成",
+        "推荐使用PDF阅读器打开以保持矢量格式"
+      ],
+      "feedback": [
+        "绿色安全区间提供直观的面积守恒性判断基准",
+        "通过红色阈值线快速发现异常波动时间步"
+      ],
+      "screenshot": "PDF阅读器截图，展示面积趋势曲线、红色阈值线和绿色安全区"
+    },
+    {
+      "title": "论文风格输出",
+      "evidence": [
+        "README.md 模块文档中--paper-style参数",
+        "Area_Conservation.py plot_area_trend函数中paper_style分支"
+      ],
+      "purpose": "生成符合学术期刊插图规范的论文级图表，满足投稿格式要求",
+      "usage": "用户准备向学术期刊投稿，需要使用符合期刊排版规范的图表插图",
+      "entry": "用户在命令行中添加--paper-style=true参数，并可配合--plot-area-type=percentage使用百分比模式",
+      "visible_elements": [
+        "加粗的坐标轴线",
+        "统一的10pt字号",
+        "优化的图例样式（黑色边框）"
+      ],
+      "operation_steps": [
+        "在命令行中进入项目根目录",
+        "输入 python Area_Conservation.py --paper-style=true --plot-area-type=percentage --threshold-percent=5.0",
+        "等待程序运行完成",
+        "在data/目录中查看生成的PDF/SVG图表"
+      ],
+      "validation_rules": [
+        "paper-style参数须设为true",
+        "建议配合--plot-area-type=percentage以百分比模式展示"
+      ],
+      "feedback": [
+        "生成图表的坐标轴线加粗至1.2pt，字号统一为9-10pt",
+        "图例带黑色细边框，无半透明背景效果",
+        "适合直接插入LaTeX或Word论文文档"
+      ],
+      "screenshot": "论文风格与默认风格图表的对比截图"
+    }
+  ],
+  "system_requirements": [
+    {
+      "item": "操作系统",
+      "minimum": "Windows 10 / macOS 12 / Ubuntu 20.04",
+      "recommended": "Windows 11 / macOS 14+ / Ubuntu 22.04+"
+    },
+    {
+      "item": "Python版本",
+      "minimum": "Python 3.8",
+      "recommended": "Python 3.10+"
+    },
+    {
+      "item": "依赖包",
+      "minimum": "numpy≥1.21.0, scipy≥1.7.0, matplotlib≥3.4.0",
+      "recommended": "同最低要求"
+    }
+  ],
+  "faq": [
+    {
+      "question": "程序提示找不到.dat文件怎么办？",
+      "answer": "请确认data/目录下存在至少一个.dat文件。默认数据目录为项目根目录下的data/文件夹，可通过--dir参数指定其他包含.dat文件的目录。"
+    },
+    {
+      "question": "为什么过滤后一个三角形都没有了？",
+      "answer": "可能是边长阈值因子设置过小，导致所有三角形边长均超过阈值被过滤。尝试增大--threshold参数值，例如从3.0调整为5.0或更大。"
+    },
+    {
+      "question": "面积变化率超过阈值是否意味着模拟结果有问题？",
+      "answer": "不一定。模拟初期颗粒可能发生重新排列导致面积波动较大，这是正常物理过程。需要结合加载阶段和模拟场景综合判断，如果后期面积仍大幅偏离初始值，则需要排查模拟参数设置。"
+    },
+    {
+      "question": "生成的图表中文显示为方框或乱码？",
+      "answer": "图表使用UTF-8编码。如中文显示异常，请安装中文字体（如宋体SimSun或微软雅黑），推荐使用Adobe Acrobat Reader打开PDF文件以获得最佳显示效果。默认已配置Times New Roman和微软雅黑作为后备字体。"
+    }
+  ],
+  "glossary": [
+    {
+      "term": "ZDEM",
+      "definition": "Z-离散元方法（Z-Discrete Element Method），一种用于模拟颗粒材料力学行为的数值计算方法"
+    },
+    {
+      "term": "Delaunay三角剖分",
+      "definition": "将离散点集连接为三角形网络的算法，确保任意三角形的外接圆内不包含其他点，生成的网格质量较高"
+    },
+    {
+      "term": "边长阈值",
+      "definition": "以颗粒平均半径的指定倍数（默认3倍）设定的三角形边长上限，超过此长度的三角形边视为两个不相邻颗粒间的异常跨接"
+    },
+    {
+      "term": "面积守恒性",
+      "definition": "在理想等体积变形条件下，颗粒体系在水平面上的投影覆盖面积应保持恒定或小范围波动，用于检验离散元模拟的物理合理性"
+    },
+    {
+      "term": "安全波动区间",
+      "definition": "面积趋势图中以绿色半透明带标注的允许面积波动范围，默认±5%，在该区间内的面积变化视为正常"
+    }
+  ],
+  "model_authored": true,
+  "external_research_notes": "",
+  "confirmation_required": true,
+  "user_confirmed": true,
+  "confirmation_stage": "business",
+  "next_action": "请确认 草稿/业务理解.md 中的软件用途、行业、目标用户、核心功能、手册结构和申请口径；确认后运行 confirm_stage.py --stage business。",
+  "review_notes": [
+    "请确认模型判断的行业领域、目标用户和主要功能是否符合实际申报口径。",
+    "请确认操作手册结构是否按真实页面和流程展开，而不是套用抽象功能列表。"
+  ],
+  "confirmation_note": "去除一站式，其余不变",
+  "confirmed_at": "2026-06-22T11:24:39+00:00"
+}

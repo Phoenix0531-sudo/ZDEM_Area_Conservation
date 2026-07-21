@@ -1,0 +1,77 @@
+{
+  "software_name": "ZDEM 颗粒分布与面积守恒分析系统",
+  "version": "V1.0",
+  "project_root": "/workspace",
+  "file_count": 6,
+  "material_line_count": 1731,
+  "source_line_count": 1719,
+  "selected_source_line_count": 1719,
+  "lines_per_page": 50,
+  "total_pages": 35,
+  "target_pages": 60,
+  "available_candidate_line_count": 1731,
+  "available_candidate_pages": 35,
+  "supplement_status": "候选源码不足60页，按全部代码材料生成",
+  "mode": "all_under_60_pages",
+  "selection_file": "/workspace/copyright/软件著作权申请资料/草稿/代码文件选择.json",
+  "outputs": [
+    "代码-全部.md"
+  ],
+  "files": [
+    {
+      "path": "Area_Conservation.py",
+      "source_line_count": 606,
+      "selected_line_start": 1,
+      "selected_line_end": 606,
+      "selected_line_count": 606,
+      "material_line_start": 1,
+      "material_line_end": 608
+    },
+    {
+      "path": "main.py",
+      "source_line_count": 382,
+      "selected_line_start": 1,
+      "selected_line_end": 382,
+      "selected_line_count": 382,
+      "material_line_start": 609,
+      "material_line_end": 992
+    },
+    {
+      "path": "zdemio.py",
+      "source_line_count": 328,
+      "selected_line_start": 1,
+      "selected_line_end": 328,
+      "selected_line_count": 328,
+      "material_line_start": 993,
+      "material_line_end": 1322
+    },
+    {
+      "path": "zdemplot.py",
+      "source_line_count": 361,
+      "selected_line_start": 1,
+      "selected_line_end": 361,
+      "selected_line_count": 361,
+      "material_line_start": 1323,
+      "material_line_end": 1685
+    },
+    {
+      "path": "setup.py",
+      "source_line_count": 36,
+      "selected_line_start": 1,
+      "selected_line_end": 36,
+      "selected_line_count": 36,
+      "material_line_start": 1686,
+      "material_line_end": 1723
+    },
+    {
+      "path": "zdem_area_conservation/__init__.py",
+      "source_line_count": 6,
+      "selected_line_start": 1,
+      "selected_line_end": 6,
+      "selected_line_count": 6,
+      "material_line_start": 1724,
+      "material_line_end": 1731
+    }
+  ],
+  "safe_software_filename": "ZDEM 颗粒分布与面积守恒分析系统"
+}

@@ -1,0 +1,42 @@
+{
+  "project_root": "/workspace",
+  "project_name": "workspace",
+  "software_name_candidate": "workspace",
+  "package": {
+    "name": "",
+    "path": "",
+    "version": "V1.0",
+    "scripts": {},
+    "dependency_names": []
+  },
+  "frameworks": [],
+  "language": "Python",
+  "source": {
+    "file_count": 6,
+    "line_count": 1719,
+    "total_file_count": 6,
+    "total_line_count": 1719,
+    "extension_counts": {
+      ".py": 6
+    },
+    "category_counts": {
+      "source": 6
+    },
+    "categorized_files": {
+      "source": [
+        "Area_Conservation.py",
+        "main.py",
+        "setup.py",
+        "zdemio.py",
+        "zdemplot.py",
+        "zdem_area_conservation/__init__.py"
+      ]
+    }
+  },
+  "routes": [
+    "/"
+  ],
+  "readme_excerpt": "<div align=\"center\">\n# ZDEM é¢ç²åå¸ä¸é¢ç§¯å®æåæ\n**Area Conservation Analysis for Z-Discrete Element Method (ZDEM) Simulations**\n[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)\n[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)](setup.py)\n[![Dependencies](https://img.shields.io/badge/dependencies-numpy%20%7C%20scipy%20%7C%20matplotlib-orange)](requirements.txt)\n</div>\n---\n## é¡¹ç®ç®ä» | Overview\nå¨ ZDEM ç¦»æ£å\næ°å¼æ¨¡æä¸­ï¼çæµé¢ç²ä½ç³»å¨å è½½è¿ç¨ä¸­çé¢ç§¯å®ææ§æ¯å¤æ­æ¨¡æç©çåçæ§çéè¦ææ ãç¶èï¼ZDEM åå§è¾åºä¸ºææ¶é´æ­¥åçç `.dat` æ ¼å¼ï¼æ æ³ç´æ¥è·åé¢ç²è¦çé¢ç§¯éå è½½è¿ç¨çååè¶å¿ãæ¬é¡¹ç®èªå¨å®æä» `.dat` å°ä¸è§ç½æ ¼é¢ç§¯åæçå®æ´é¾è·¯ï¼æ¹éè§£æ ZDEM ç»ææä»¶ï¼éè¿ Delaunay ä¸è§åååè¾¹é¿éå¼è¿æ»¤è®¡ç®ææè¦çé¢ç§¯ï¼è¾åºé¢ç§¯éæ¶é´æ­¥çååè¶å¿å¾ï¼å¹¶ç´è§æ è¯å®å\n¨æ³¢å¨åºé´ã\n> In ZDEM (Z-Discrete Element Method) simulations, monitoring the area conservation of granular assemblies during loading is critical for verifying physical validity. However, raw ZDEM outputs are fragmented `.dat` files that do not directly reveal how the particle-covered area evolves over time. This project bridges the gap: it batch-processes ZDEM result files, computes the effective coverage area via Delaunay triangulation with edge-length threshold filtering, and produces trend charts with safety-band annotations.\n---\n## ææ¯ç¹æ§ | Technical Highlights\n| ç¹æ§ | Feature | è¯´æ |\n|------|---------|------|\n| **æ¹é dat è§£æ** | Batch .dat Parsing | èªå¨æ«æç®å½ä¸ææ ZDEM `.dat` æä»¶ï¼æåé¢ç²åæ ãåå¾ãé¢è²ä¿¡æ¯ |\n| **Delaunay ä¸è§åå** | Delaunay Triangulation | åºäº scipy.spatial å®ç°ï¼æ¯æéå¤ç¹æ£æµä¸å¼å¸¸å®¹é |\n| **è¾¹é¿éå¼è¿æ»¤** | Edge-length Filtering | ä»¥é¢ç²å¹³ååå¾çåæ°æªæ­è¿é¿ä¸è§å½¢è¾¹ï¼æ¶é¤å¼å¸¸è·¨æ¥ |\n| **é¢ç§¯è¶å¿å¯è§å** | Area Trend Visualization | æ¯æåå§å¼ / å½ä¸å / ç¾åæ¯ä¸ç§æ¨¡å¼ï¼å«å®å\n¨æ³¢å¨åºé´çæ æ³¨ |\n| **è®ºæè§èè¾åº** | Publication-quality Figures | é»è®¤è¾åº PDF + SVG ç¢éæ ¼å¼ï¼ç¬¦åå­¦æ¯æåæå¾è§è |\n| **å½ä»¤è¡å¯é\nç½®** | CLI Configurable | æ°æ®ç®å½ãé¢ç²é¢è²ç­éãéå¼å å­ãå¾è¡¨ç±»åç­å\n¨é¨éè¿åæ°æ§å¶ |\n---\n## ç®å½ | Table of Contents\n- [æ°æ®åå¤](#æ°æ®åå¤--data-preparation)\n- [ç®æ³åç](#ç®æ³åç--algorithm)\n- [æ¨¡åææ¡£](#æ¨¡åææ¡£--module-reference)\n- [å¿«éå¼å§](#å¿«éå¼å§--quick-start)\n- [è¾åºè¯´æ](#è¾åºè¯´æ--output)\n- [å®è£\nä¾èµ](#å®è£\nä¾èµ--installation)\n- [é¡¹ç®ç»æ](#é¡¹ç®ç»æ--project-structure)\n- [å¼ç¨](#å¼ç¨--citation)\n- [è®¸å¯è¯](#è®¸å¯è¯--license)\n---\n## æ°æ®åå¤ | Data Preparation\nä½¿ç¨æ¬å·¥å\n·åï¼è¯·ç¡®ä¿ä½ ç ZDEM æ¨¡æç»æç®å½å",
+  "run_command_candidates": [],
+  "feature_candidates": []
+}
