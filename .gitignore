@@ -32,3 +32,9 @@ Accuracy Validation/
 # Temporary
 *~
 *.pyc
+
+# large local datasets / rendered figures
+data1/
+figures/
+.agent-workflow
+__pycache__/

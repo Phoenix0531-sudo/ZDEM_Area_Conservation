@@ -152,7 +152,11 @@ def read_data(filename):
 		if flag == 5:
 			temp = line.split()
 			if len(temp) != 0:
-				GROUP.append([temp[1], temp[10]])
+				if len(temp) > 10 and 'contact' not in line and 'bond' not in line:
+					GROUP.append([temp[1], temp[10]])
+				else:
+					flag = 0
+					continue
 			
 	del WALL[-1] #del last NULL line
 	del BALL[-1] #del last NULL line

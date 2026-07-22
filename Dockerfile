@@ -1,11 +1,4 @@
-FROM python:3.11-slim
-
+FROM hermes-patent-figs
+COPY . /app
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-# Smoke test: verify imports
-CMD ["python", "-c", "import numpy; import scipy; import matplotlib; print('All imports OK')"]
+CMD python Area_Conservation.py --dir data --colors all --threshold 3.0

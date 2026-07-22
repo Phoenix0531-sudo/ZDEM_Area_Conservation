@@ -110,32 +110,35 @@ def search_domain(WALLP1P2xyxyN4, BALLxyN2, BALLRad):
 
 def search_domain_wall(WALLP1P2xyxyN4):
 
-	P1P2xyxymin = WALLP1P2xyxyN4.min(axis=0) # [P1xmin P1ymin P2xmin P2ymin]
-	P1P2xyxymax = WALLP1P2xyxyN4.max(axis=0) # [P1xmax P1ymax P2xmax P2ymax]
+	P1P2 = np.asarray(WALLP1P2xyxyN4)
+	P1P2xyxymin = np.min(P1P2, axis=0).flatten()
+	P1P2xyxymax = np.max(P1P2, axis=0).flatten()
 
-	left   = min(P1P2xyxymin[0,0],P1P2xyxymin[0,2])
-	right  = max(P1P2xyxymax[0,0],P1P2xyxymax[0,2])
-	bottom = min(P1P2xyxymin[0,1],P1P2xyxymin[0,3])
-	top    = max(P1P2xyxymax[0,1],P1P2xyxymax[0,3])
+	left   = min(P1P2xyxymin[0],P1P2xyxymin[2])
+	right  = max(P1P2xyxymax[0],P1P2xyxymax[2])
+	bottom = min(P1P2xyxymin[1],P1P2xyxymin[3])
+	top    = max(P1P2xyxymax[1],P1P2xyxymax[3])
 	
 	return left,right,bottom,top
 
 def search_domain_ball(BALLxyN2, BALLRad):
 
-	leftbottom = (BALLxyN2-BALLRad).min(axis=0)
-	righttop = (BALLxyN2+BALLRad).max(axis=0)
+	ball = np.asarray(BALLxyN2 - BALLRad)
+	leftbottom = np.min(ball, axis=0).flatten()
+	ball2 = np.asarray(BALLxyN2 + BALLRad)
+	righttop = np.max(ball2, axis=0).flatten()
 	
-	left = leftbottom[0,0]
-	bottom = leftbottom[0,1]
+	left = leftbottom[0]
+	bottom = leftbottom[1]
 	
-	right = righttop[0,0]
-	top = righttop[0,1]
+	right = righttop[0]
+	top = righttop[1]
 	
 	return left,right,bottom,top
 	
 def plot_wall(fig, ax, WALLP1P2xyxyN4, ColorList,linewidth=1):
 
-	WALLsegs=[np.row_stack([P1P2xyxy[0,0:2], P1P2xyxy[0,2:4]]) for P1P2xyxy in WALLP1P2xyxyN4 ]
+	WALLsegs=[np.vstack([P1P2xyxy[0,0:2], P1P2xyxy[0,2:4]]) for P1P2xyxy in WALLP1P2xyxyN4 ]
 	#set color
 #	colors = [mcolors.to_rgba(c) 
 #          for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]

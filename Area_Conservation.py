@@ -26,15 +26,35 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import zdemio
 import zdemplot
 
-# 全局字体与字号
+# 强制刷新 matplotlib 字体缓存，确保系统已安装字体被正确识别
+matplotlib.font_manager._load_fontmanager(try_read_cache=False)
+
+# ── 自动检测可用中文字体 ──
+try:
+    from matplotlib.font_manager import FontManager
+    fm = FontManager()
+    available_fonts = {f.name for f in fm.ttflist}
+    cn_candidates = ['Microsoft YaHei', 'WenQuanYi Micro Hei', 'SimHei',
+                     'WenQuanYi Micro Hei Mono', 'Noto Sans CJK SC',
+                     'Noto Sans SC', 'Source Han Sans SC', 'DengXian']
+    found = [f for f in cn_candidates if f in available_fonts]
+    if not found:
+        print("警告: 未找到已知中文字体，图表中的中文可能显示为方框。")
+except Exception:
+    pass
+
+# ── 全局字体：sans-serif 优先匹配系统中文字体；stix math 处理英文/数字 ──
 plt.rcParams.update({
-    'font.family': ['Times New Roman', 'Microsoft YaHei', 'SimHei'],
-    'font.size': 10,
-    'axes.labelsize': 10,
-    'axes.titlesize': 10,
-    'xtick.labelsize': 9,
-    'ytick.labelsize': 9,
-    'legend.fontsize': 9,
+    'font.sans-serif': ['WenQuanYi Micro Hei', 'Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
+    'font.family': 'sans-serif',
+    'font.serif': [],            # 清空衬线字体列表，防止回退到 Times New Roman 导致中文乱码
+    'mathtext.fontset': 'stix',
+    'font.size': 13,            # 图内文字
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 12,
+    'legend.fontsize': 12,
     'axes.unicode_minus': False,
     'savefig.bbox': 'tight',
     'savefig.pad_inches': 0.05,
@@ -313,55 +333,101 @@ def compare_results(results):
         print(f"颗粒数量变化率: {particle_change_overall:+.2f}%")
 
 def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, filtered=False, xmax=70000.0, ymax=25000.0):
-    """保存三角网格图（叠加颗粒），输出 PDF + SVG。"""
+    """保存三角网格图（叠加颗粒），输出 PDF + SVG。学术风格: 无网格、L型坐标轴、刻度朝内。"""
     if coords is None or coords.shape[0] == 0:
         warnings.warn(f"没有坐标数据，无法绘制三角网格图到 '{filename}'。", UserWarning)
         return
-    if colors is not None:
-        # 全部映射为0，保证所有颗粒都用同一种颜色
-        colors = np.zeros_like(colors)
-        if len(colors.shape) == 1:
-            colors = colors.reshape(-1, 1)
-        colors = np.array([c.reshape(1, 1) for c in colors])
-    # 只用一种颜色（绿色）
-    color_list = [(0, 1, 0)]
-    fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
+
+    # ── Word单栏宽度 ≈ 16cm = 6.3in，高按比例自适应 ──
+    aspect = ymax / xmax if xmax > 0 else 0.6
+    fig_width = 6.3  # inches, 适配 Word
+    fig_height = fig_width * aspect + 0.6  # 留出坐标轴标签空间
+    fig_height = max(fig_height, 2.0)
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='white', dpi=300)
     ax.set_facecolor('white')
-    ax.set_xlim(0, xmax)
-    ax.set_ylim(0, ymax)
-    if coords is not None and radii is not None and colors is not None:
-        # 过滤超出xmax和ymax范围的颗粒
+
+    # ── 颗粒颜色：黑/深灰（学术风），不再用荧光绿 ──
+    PARTICLE_COLOR = '#545454'
+    MESH_LINE_COLOR = '#666666'
+    MESH_LINE_WIDTH = 0.35
+
+    # 统一的颗粒颜色映射（不用绿色）
+    if colors is not None:
+        # 全部颗粒用深灰色
+        colors_uniform = np.zeros_like(colors)
+        if len(colors_uniform.shape) == 1:
+            colors_uniform = colors_uniform.reshape(-1, 1)
+        colors_uniform = np.array([c.reshape(1, 1) for c in colors_uniform])
+    else:
+        colors_uniform = None
+
+    # 自定义 color_list：深灰色
+    academic_color_list = [(84/255, 84/255, 84/255)]  # '#545454'
+
+    if coords is not None and radii is not None and colors_uniform is not None:
         mask = (coords[:, 0] <= xmax) & (coords[:, 1] <= ymax)
         filtered_coords = coords[mask]
         filtered_radii = radii[mask]
-        filtered_colors = colors[mask]
+        filtered_colors = colors_uniform[mask]
         if len(filtered_coords) > 0:
-            zdemplot.plot_ball(fig, ax, filtered_coords, filtered_radii, filtered_colors, color_list)
+            zdemplot.plot_ball(fig, ax, filtered_coords, filtered_radii,
+                               filtered_colors, academic_color_list)
         else:
-            warnings.warn(f"没有颗粒在指定区域内 (xmax={xmax}, ymax={ymax})，跳过绘制颗粒到 '{filename}'。", UserWarning)
-    else:
-        warnings.warn(f"没有有效的颗粒数据，跳过绘制颗粒到 '{filename}'。", UserWarning)
+            warnings.warn(f"没有颗粒在指定区域内 (xmax={xmax}, ymax={ymax})，跳过绘制颗粒到 '{filename}'。",
+                          UserWarning)
+
+    # ── 三角网格线 ──
     if tri is not None and tri.triangles.shape[0] > 0:
-        ax.triplot(tri.x, tri.y, tri.triangles, color='lime', linestyle='-', alpha=1.0, linewidth=0.2)
+        ax.triplot(tri.x, tri.y, tri.triangles,
+                   color=MESH_LINE_COLOR, linestyle='-', alpha=0.8, linewidth=MESH_LINE_WIDTH)
     else:
         warnings.warn(f"没有有效的三角网格数据，跳过绘制网格线到 '{filename}'。", UserWarning)
+
+    # ── L型坐标轴（仅左+下） + 标尺分度 ──
     ax.set_xlim(0, xmax)
     ax.set_ylim(0, ymax)
-    zdemplot.zdem_fig_set(
-        fig, ax,
-        xmaxdefine='true', ymaxdefine='true', xmindefine='true', ymindefine='true',
-        xmin=0.0, xmax=xmax, ymin=0.0, ymax=ymax,
-        wbleft=0.0, wbright=xmax, wbbottom=0.0, wbtop=ymax,
-        leftshow='true', rightshow='true', bottomshow='true', topshow='true',
-        major_locator=10000.0, minor_locator=1000.0,
-        fontsize=8, linewidth=0.5, pagesize=6.69
-    )
 
+    # 去掉顶部和右侧脊线
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_linewidth(1.0)
+    ax.spines['bottom'].set_linewidth(1.0)
+
+    # 刻度朝内
+    ax.tick_params(axis='both', which='major', direction='in',
+                   labelsize=11, width=0.8, length=5, pad=6)
+    ax.tick_params(axis='both', which='minor', direction='in',
+                   width=0.6, length=3)
+
+    # 无网格
+    ax.grid(False)
+
+    # 坐标轴标签（如果 filtered 参数为 True 说明是过滤后版本）
+    postfix = '（过滤后）' if filtered else '（初始剖分）'
+    ax.set_xlabel('X 距离 (m)', fontsize=13)
+    ax.set_ylabel('Y 深度 (m)', fontsize=13)
+
+    # ── 比例尺（右下角） ──
+    x_range = xmax - 0
+    scale_bar_length = x_range * 0.15  # 比例尺长 = 画幅的15%
+    scale_y = ymax * 0.04
+    scale_x_start = xmax * 0.78
+    scale_text_y = scale_y * 0.5
+    ax.plot([scale_x_start, scale_x_start + scale_bar_length],
+            [scale_y, scale_y], 'k-', linewidth=2.0)
+    ax.text(scale_x_start + scale_bar_length / 2, scale_text_y,
+            f'{scale_bar_length/1000:.0f} km', ha='center', va='bottom',
+            fontsize=10, color='black')
+
+    # ── 保存 PDF + SVG ──
     base = os.path.splitext(filename)[0]
     pdf_path = base + '.pdf'
     svg_path = base + '.svg'
-    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.05)
-    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.05)
+    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.05,
+                facecolor='white', edgecolor='none')
+    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.05,
+                facecolor='white', edgecolor='none')
     plt.close(fig)
     print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{pdf_path}' 与 '{svg_path}'。")
 
@@ -372,7 +438,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
         return
 
     sorted_results = sorted(results, key=lambda x: int(re.findall(r'\d+', x['file_name'])[-1]) if re.findall(r'\d+', x['file_name']) else 0)
-    
+
     file_numbers = [int(re.findall(r'\d+', r['file_name'])[-1]) for r in sorted_results if re.findall(r'\d+', r['file_name'])]
     areas = [r['area'] for r in sorted_results if re.findall(r'\d+', r['file_name'])]
 
@@ -403,68 +469,86 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
 
     if plot_type == 'raw':
         y_data = areas
-        y_label = '面积 (平方单位)'
+        y_label = '面积 (m²)'
     elif plot_type == 'normalized':
         min_a, max_a = min(areas), max(areas)
         if max_a != min_a:
              y_data = [(a - min_a)/(max_a - min_a) for a in areas]
         else:
              y_data = [0.5 for _ in areas]
-        y_label = '归一化面积 (0-1)'
+        y_label = '归一化面积'
     else:
         y_data = y_data_percent
         y_label = '面积相对变化 (%)'
 
-    fig, ax = plt.subplots(figsize=(6.69, 3.94), facecolor='white', dpi=300)
+    # ── Word 单栏宽度 6.3in ──
+    fig, ax = plt.subplots(figsize=(6.3, 4.0), facecolor='white', dpi=300)
+    ax.set_facecolor('white')
 
-    if paper_style:
-        for spine in ax.spines.values():
-            spine.set_linewidth(1.2)
-        ax.tick_params(axis='both', which='both', width=1.0, labelsize=9)
+    # ── 数据曲线：matplotlib默认蓝色 + 圆形标记 ──
+    ax.plot(x_data, y_data, marker='o', markersize=5, markerfacecolor='white',
+            markeredgecolor='#1f77b4', markeredgewidth=1.2,
+            color='#1f77b4', linewidth=1.5, alpha=0.9)
 
-    ax.plot(x_data, y_data, marker='o', markersize=4, linestyle='-', color='#1f77b4', linewidth=1.5, label='面积波动', alpha=0.9)
+    # ── 坐标轴标签 ──
+    ax.set_xlabel('归一化时间步 (0 → 1)', fontsize=13)
+    ax.set_ylabel(y_label, fontsize=13)
 
-    ax.set_xlabel('归一化时间步 (0 → 1)', fontsize=10 if paper_style else None)
-    ax.set_ylabel(y_label, fontsize=10 if paper_style else None)
-
+    # ── 虚线网格 ──
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.5)
 
-    ax.set_xlim(0, 1.05)
+    ax.set_xlim(0, 1.0)
 
     if plot_type == 'percentage' or plot_type == 'default':
+        # 零线
         ax.axhline(0, color='gray', linestyle='-', linewidth=0.8, alpha=0.5)
 
-        ax.axhline(threshold_percent, color='red', linestyle='--', linewidth=1.0, label=f'±{threshold_percent}% 阈值', alpha=0.7)
-        ax.axhline(-threshold_percent, color='red', linestyle='--', linewidth=1.0, alpha=0.7)
+        # ±阈值线（红色虚线），图例显示
+        ax.axhline(threshold_percent, color='#cc4444', linestyle='--', linewidth=1.2, alpha=0.7, label=f'±{threshold_percent}% 阈值')
+        ax.axhline(-threshold_percent, color='#cc4444', linestyle='--', linewidth=1.2, alpha=0.7)
 
-        ax.axhspan(-hint_band_percent, hint_band_percent, facecolor='green', alpha=0.08, label='安全波动区间')
+        # 绿色安全波动区间
+        ax.axhspan(-hint_band_percent, hint_band_percent,
+                   facecolor='green', alpha=0.08, label='安全波动区间')
 
         max_fluctuation = max(max([abs(y) for y in y_data]), threshold_percent)
         y_limit = max_fluctuation * 2.5
         y_limit = max(y_limit, 10.0)
-
         ax.set_ylim(-y_limit, y_limit)
 
         ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=100, decimals=1))
 
+        # ── 图例 ──
+        ax.legend(loc='upper right', fontsize=12, frameon=True, fancybox=False, edgecolor='black')
+
     elif plot_type == 'raw':
-        margin = (max(y_data) - min(y_data)) * 0.5
+        margin = (max(y_data) - min(y_data)) * 0.3
         if margin == 0: margin = 1.0
         ax.set_ylim(min(y_data) - margin, max(y_data) + margin)
 
-    ax.legend(loc='upper right', fontsize=9, frameon=True, fancybox=False, edgecolor='black')
-    
+    # ── 四边坐标轴（保留所有spine） ──
+    ax.spines['left'].set_linewidth(1.0)
+    ax.spines['bottom'].set_linewidth(1.0)
+
+    # 刻度朝内
+    ax.tick_params(axis='both', which='major', direction='in',
+                   labelsize=11, width=0.8, length=5, pad=6)
+    ax.tick_params(axis='both', which='minor', direction='in',
+                   width=0.6, length=3)
+
     try:
         data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     except NameError:
         data_dir = 'data'
-        
+
     os.makedirs(data_dir, exist_ok=True)
     base_path = os.path.join(data_dir, f'area_trend')
     pdf_path = base_path + '.pdf'
     svg_path = base_path + '.svg'
-    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.1)
-    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.1)
+    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.1,
+                facecolor='white', edgecolor='none')
+    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.1,
+                facecolor='white', edgecolor='none')
     plt.close(fig)
     print(f"面积趋势图（{plot_type}）已保存到: {pdf_path} 与 {svg_path}")
 
