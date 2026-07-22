@@ -21,6 +21,12 @@ Python · 科研绘图
 - 基准模型与图件脚本
 - 科研绘图输出
 
+## 数据说明
+
+- **进仓样例**：[`samples/`](samples/) 含两个合成 `.dat`，供 CI 与 `pytest tests/test_samples_dat.py` 使用。
+- **本地大体量数据**（已 gitignore，勿提交）：`data/`、`data1/`、`figures/`。
+- 全量实验目录用法：`python Area_Conservation.py --dir=/你的/ZDEM/导出目录`
+
 ## 快速开始
 
 ```bash

@@ -55,9 +55,35 @@
 
 ## 数据准备 | Data Preparation
 
-使用本工具前，请确保你的 ZDEM 模拟结果目录包含 `.dat` 格式的输出文件。建议将所有 `.dat` 文件放置在同一目录（默认 `data/`）下。程序会自动将 `.dat` 转换为 `_particles.txt` 格式的中间文件，包含每个颗粒的坐标、半径和颜色编号。
+### Mini samples (in git, used by CI)
 
-> Before using this tool, make sure your ZDEM simulation outputs are `.dat` files placed in a single directory (default: `data/`). The program automatically converts `.dat` files into `_particles.txt` intermediate files containing each particle's coordinates, radius, and color index.
+```bash
+# unit tests parse these without any local experiment dump
+pytest -q tests/test_samples_dat.py
+```
+
+| Path | Purpose |
+|------|---------|
+| [`samples/all_0000001000.dat`](samples/all_0000001000.dat) | 3 balls + 1 wall, step 1000 |
+| [`samples/all_0000002000.dat`](samples/all_0000002000.dat) | same layout shifted, step 2000 |
+| [`samples/README.md`](samples/README.md) | sample policy |
+
+### Full experiment data (local only — **not** in git)
+
+These directories are **gitignored** and can be hundreds of MB on a research machine:
+
+- `data/`, `data1/` — full ZDEM exports
+- `figures/` — rendered paper figures (PDF/SVG)
+
+Point the CLI at your export:
+
+```bash
+python Area_Conservation.py --dir=/path/to/your/zdem/data
+```
+
+Do **not** commit full simulation outputs. Keep demos and CI on `samples/`.
+
+> Before using this tool on a real run, place ZDEM `.dat` files in one directory. The program converts them to intermediate particle tables and computes area trends.
 
 ---
 

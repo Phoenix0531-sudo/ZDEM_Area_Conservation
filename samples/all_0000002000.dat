@@ -1,0 +1,32 @@
+version    : 2.2(2022-05-11)
+filename   : ./samples/all_0000002000.dat
+
+parameter data ...
+             right :   1.000000000000e+02
+              left :   0.000000000000e+00
+            height :   1.000000000000e+02
+            bottom :   0.000000000000e+00
+                dt :   5.000000000000e-02
+           gravity :  -9.800000000000e+00
+      current_step : 2000
+
+wall data ...
+     index         id      P1[0]      P1[1]      P2[0]      P2[1]
+         0          1   0.000e+00   0.000e+00   1.000e+02   0.000e+00
+
+     index         id         xF         yF
+
+ball data ...
+     index         id                    x                    y                    r                color
+         0          1   2.200000000000e+01   2.100000000000e+01   5.000000000000e+00                    1
+         1          2   4.100000000000e+01   2.600000000000e+01   5.000000000000e+00                    1
+         2          3   6.200000000000e+01   2.100000000000e+01   5.000000000000e+00                    2
+
+     index         id            m
+
+contact data ...
+id1 id2
+1 2
+
+bond data ...
+       id1 id2 flag
