@@ -38,3 +38,5 @@ data1/
 figures/
 .agent-workflow
 __pycache__/
+
+.venv/
