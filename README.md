@@ -1,70 +1,67 @@
 # ZDEM Area Conservation
 
-**Particle distribution and area-conservation analysis for ZDEM with paper-style figures.**
+**Particle-subset area conservation for ZDEM — Delaunay / matplotlib triangulation, color# filtering, paper figure scripts, sample-first CI.**
 
 [English](README.md) | [中文](README.zh-CN.md)
 
 [![CI](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml/badge.svg)](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Samples-first. CI does not need multi-GB dumps.
+Batch analysis of ZDEM `.dat` frames: select particles by **color group**, build a triangular mesh, track **area statistics** under deformation. Automates what used to be ad-hoc MATLAB leftovers.
 
 ## Preview
 
 ![ZDEM Area Conservation](docs/screenshots/preview.png)
 
-## Features
+## Main entry
 
-- Triangulation-oriented area conservation metrics
-- zdemio / zdemplot helpers for ZDEM dumps
-- Paper-style figure scripts (fig*.py)
-- samples/ mini .dat for reproducible tests
-- Hard CI on samples + critical ruff rules
+`Area_Conservation.py` (getopt CLI):
 
-## Get started
+- Reads ZDEM dumps through `zdemio` / plots via `zdemplot`
+- Builds triangulation (`matplotlib.tri.Triangulation` / `scipy.spatial.Delaunay`)
+- Filters by color# / group conventions used in lab packs
+- Writes mesh figures + area trend stats
+- Uses `Agg` backend for headless figure export
+- Auto-detects Chinese fonts for paper labels when available
 
-### Install
+Supporting figure scripts: `fig1_*.py` … `fig8_areatrend.py` for algorithm flow, benchmarks, complex models, filtering, area trends.
+
+## Samples vs personal data
+
+| Path | Purpose |
+|------|---------|
+| `samples/*.dat` | Tiny frames for CI (`all_0000001000.dat`, …) |
+| `data/`, `data1/`, full `figures/` | **Local only** — do not force-push multi-GB dumps |
+
+## Install
 
 ```bash
 git clone https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation.git
 cd ZDEM_Area_Conservation
 pip install -r requirements.txt
+# or uv sync
 ```
 
-### Usage
+Python **>= 3.10**. Deps: numpy, scipy, matplotlib.
+
+## Run
 
 ```bash
 python Area_Conservation.py --help
 pytest tests/
 ```
 
-## Project layout
+Point CLI flags at `samples/` first; keep personal campaign data outside git.
 
-```
-Area_Conservation.py  zdemio.py  zdemplot.py
-samples/  figures/  docs/screenshots/
-tests/
-```
+## Related
 
-## Related ZDEM tools
+ParticleTracker · Salt Kinematics · Bond Fracture · DFN · Model Editor · Archiver
 
-| Repo | Role |
-|------|------|
-| [ZDEM_ParticleTracker](https://github.com/Phoenix0531-sudo/ZDEM_ParticleTracker) | Interactive particle tracking + true-radius render |
-| [ZDEM_Salt_Kinematics](https://github.com/Phoenix0531-sudo/ZDEM_Salt_Kinematics) | Salt geometry / kinematics extraction and plots |
-| [ZDEM_Area_Conservation](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation) | Area-conservation / triangulation analysis |
-| [ZDEM_Bond_Fracture](https://github.com/Phoenix0531-sudo/ZDEM_Bond_Fracture) | Bond damage series + visualizer |
-| [ZDEM_Damage_Thresholds](https://github.com/Phoenix0531-sudo/ZDEM_Damage_Thresholds) | Damage thresholds and energy plots |
-| [ZDEM_DFN](https://github.com/Phoenix0531-sudo/ZDEM_DFN) | Discrete fracture network generator |
-| [ZDEM_Model_Editor](https://github.com/Phoenix0531-sudo/ZDEM_Model_Editor) | Model file visual editor |
-| [ZDEM_Archiver](https://github.com/Phoenix0531-sudo/ZDEM_Archiver) | Archive / purge bulky dumps |
-| [ZDEM3D_WEB](https://github.com/Phoenix0531-sudo/ZDEM3D_WEB) | CAE cloud UI (Django + React + VTK.js) |
+## Scope
 
-
-## Notes
-
-Keep personal multi-GB dumps local; do not force-push datasets.
+- **In:** color-subset meshes, area conservation stats, paper figure generators, sample CI
+- **Out:** interactive VisPy viewer (ParticleTracker), cloud storage of full simulations
 
 ## License
 
-MIT. Free for commercial use with attribution where applicable. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
