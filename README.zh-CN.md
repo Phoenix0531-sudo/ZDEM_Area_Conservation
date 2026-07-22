@@ -1,109 +1,65 @@
-# ZDEM 面积守恒分析
+# ZDEM Area Conservation
 
-**ZDEM 颗粒分布与面积守恒分析工具包**
+**面向 ZDEM 颜色组的面积守恒 / 三角网格分析**
 
 [English](README.md) | [中文](README.zh-CN.md)
 
 ![CI](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-ZDEM 颗粒分布与面积守恒分析工具包。
+对 ZDEM 颗粒包做**面积守恒**检查的批处理工具：读 `.dat` 帧（`zdemio`），对选定 **color#** 建三角网、出图并汇总面积趋势。
 
-> 作者：[Phoenix0531-sudo](https://github.com/Phoenix0531-sudo) · 欢迎学习、二次开发与**商业使用**，请保留本仓库署名与许可证声明。
+`data/`、`data1/`、`figures/` 下的完整实验数据**仅本地**（已 ignore）。CI 使用 `samples/` 中的合成小帧。
 
-## 技术栈
+## 为什么做这个
 
-Python · 科研绘图
+盐构造 / 颗粒论文需要证明跟踪区域在变形下面积守恒。自动化三角剖分与统计优于零散旧脚本。
 
-## 功能特性
+## 功能
 
-- 颗粒/面积守恒指标
-- 基准模型与图件脚本
-- 科研绘图输出
+- `Area_Conservation.py` — 主分析入口（getopt）  
+- `zdemio` / `zdemplot`  
+- 论文向 `fig*.py`  
+- `samples/` 供测试的小 `.dat`  
 
-## 数据说明
-
-- **进仓样例**：[`samples/`](samples/) 含两个合成 `.dat`，供 CI 与 `pytest tests/test_samples_dat.py` 使用。
-- **本地大体量数据**（已 gitignore，勿提交）：`data/`、`data1/`、`figures/`。
-- 全量实验目录用法：`python Area_Conservation.py --dir=/你的/ZDEM/导出目录`
-
-## 快速开始
+## 安装
 
 ```bash
 git clone https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation.git
 cd ZDEM_Area_Conservation
-```
-
-```bash
 pip install -r requirements.txt
-python Area_Conservation.py
 ```
 
-更完整的英文说明见 [README.md](README.md)。
-
-## 仓库结构（摘要）
-
-```
-ZDEM_Area_Conservation/
-├─ .github/
-├─ copyright/
-├─ data/
-├─ data1/
-├─ docs/
-├─ figures/
-├─ res/
-├─ zdem_area_conservation/
-├─ Area_Conservation.py
-├─ CHANGELOG.md
-├─ Dockerfile
-├─ fig1_algorithm_flow.py
-├─ fig2_algorithm_flow.py
-├─ fig2_benchmark_models.py
-├─ fig3_benchmark_models.py
-├─ fig3_complex_models.py
-├─ fig4_complex_models.py
-├─ fig5_benchmark_mesh.py
-```
-
-## 测试
+## 使用
 
 ```bash
-pip install pytest
-pytest -q
+python Area_Conservation.py --help
 ```
 
-仓库内 `tests/` 至少包含 smoke 测试；有完整测试套件时以 CI 为准。
+```bash
+pytest tests/test_samples_dat.py tests/test_zdemio.py
+```
 
-## CI
+## 数据策略
 
-GitHub Actions（`push` / `pull_request`）会：
+| 路径 | 是否进 git |
+|------|------------|
+| `samples/` | 是（合成小样） |
+| `data/`、`data1/`、`figures/` | 否，仅本地 |
 
-- 安装依赖（requirements / pyproject）
-- 运行 `pytest`（**硬失败**）
-- 尽力做语法/结构检查
-
-## ZDEM 工具族
-
-同一作者维护的 ZDEM / DEM 配套开源工具：
+## 相关 ZDEM 工具
 
 | 仓库 | 作用 |
 |------|------|
-| [ZDEM_ParticleTracker](https://github.com/Phoenix0531-sudo/ZDEM_ParticleTracker) | VisPy 颗粒追踪（真实半径圆盘、永久 ID） |
-| [ZDEM_Archiver](https://github.com/Phoenix0531-sudo/ZDEM_Archiver) | 时间步冗余数据安全清理 |
-| [ZDEM_Area_Conservation](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation) | Delaunay 覆盖面积随加载变化 |
-| [ZDEM_Bond_Fracture](https://github.com/Phoenix0531-sudo/ZDEM_Bond_Fracture) | 粘结损伤时序与 ROI |
-| [ZDEM_Damage_Thresholds](https://github.com/Phoenix0531-sudo/ZDEM_Damage_Thresholds) | 损伤演化与破裂阈值 |
-| [ZDEM_DFN](https://github.com/Phoenix0531-sudo/ZDEM_DFN) | 离散裂隙网络生成 |
+| [ZDEM_ParticleTracker](https://github.com/Phoenix0531-sudo/ZDEM_ParticleTracker) | 交互式颗粒追踪 + VisPy 真实半径渲染 |
+| [ZDEM_Salt_Kinematics](https://github.com/Phoenix0531-sudo/ZDEM_Salt_Kinematics) | 盐体几何/运动学提取与出图 |
+| [ZDEM_Area_Conservation](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation) | 面积守恒 / 三角网格分析 |
+| [ZDEM_Bond_Fracture](https://github.com/Phoenix0531-sudo/ZDEM_Bond_Fracture) | 粘结损伤序列 + 桌面/CLI |
+| [ZDEM_Damage_Thresholds](https://github.com/Phoenix0531-sudo/ZDEM_Damage_Thresholds) | 损伤阈值与应变–能量图 |
+| [ZDEM_DFN](https://github.com/Phoenix0531-sudo/ZDEM_DFN) | ZDEM 离散裂隙网络生成 |
 | [ZDEM_Model_Editor](https://github.com/Phoenix0531-sudo/ZDEM_Model_Editor) | 模型文件可视化编辑 |
-| [ZDEM_Salt_Kinematics](https://github.com/Phoenix0531-sudo/ZDEM_Salt_Kinematics) | 盐体运动学分析 |
-| [ZDEM3D_WEB](https://github.com/Phoenix0531-sudo/ZDEM3D_WEB) | 三维 Web CAE 前端 |
-
-典型链路：**Model_Editor / DFN → ZDEM 计算 → Archiver（清盘）→ ParticleTracker / Bond / Area / Salt / Damage（分析）**。
-
+| [ZDEM_Archiver](https://github.com/Phoenix0531-sudo/ZDEM_Archiver) | 大体量模拟结果归档清理 |
+| [ZDEM3D_WEB](https://github.com/Phoenix0531-sudo/ZDEM3D_WEB) | CAE 云端界面（Django + React + VTK.js） |
 ## 许可证
 
-[MIT](LICENSE) — 可自由使用、修改、分发与**商用**，需保留版权与许可声明（提及本仓库 / 作者即可）。
-
-## 关于
-
-维护者：[Phoenix0531-sudo](https://github.com/Phoenix0531-sudo)
+MIT。可在署名前提下商用。见 [LICENSE](LICENSE)。
