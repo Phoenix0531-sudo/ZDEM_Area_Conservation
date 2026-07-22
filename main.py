@@ -147,11 +147,10 @@ for op, value in opts:
 	elif op == "--bondplot":
 		bondplot=value
 	elif op == "--ballplot":
-			ballplot=value
-	# argv length already validated above via zdemio.usage
+		ballplot=value
 
-	#颜色查询
-	colormapfile= zdemio.GetColormapFile(colormap,VBOXscriptDir)
+#颜色查询
+colormapfile= zdemio.GetColormapFile(colormap,VBOXscriptDir)
 logger.info("colormapfile:%s" %(colormapfile) )
 
 flist = []

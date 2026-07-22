@@ -299,30 +299,15 @@ def GetColormapFile(colormap,VBOXscriptDir):
 		colormapfile=VBOXscriptDir+'/res/ColorRicebal.txt'
 		my_file = Path(colormapfile)
 		if (not my_file.exists()):
-			#print("文件不存在，***colormapfile:",colormapfile)
-			# 指定的文件存在	
 			colormapfile = resource_path(os.path.join("res","ColorRicebal.txt"))
-		
 	else:
-	#默认取值见https://doc.geovbox.com/zdem/color/．建议直接制定该文件的绝对路径或者相对路径，
-	#如--colormap=/home/zhangsan/MyColorMap.txt或--colormap=./ＭyColorMap.txt．
-	#如果仅指定文件名，如--colormap=ＭyColorMap.txt，搜索顺序为 当前目录 > --dir指定的目录 > Home．")
 		colormapfile=colormap
-		#print("1:", colormapfile)
 		if ( os.path.isfile(colormapfile) == False ):
-					# search relative to cwd (legacy scripts used a free DataDir name)
-					colormapfile = os.path.join(os.getcwd(), colormap)
-					if ( os.path.isfile(colormapfile) == False ):
-						colormapfile=os.path.join(os.environ.get('HOME', os.path.expanduser('~')), colormap)
-						if ( os.path.isfile(colormapfile) == False ):
-							print("找不到", colormap)
-
-	#print("colormap:", colormapfile)
-	#with open(colormapfile) as f:
-	#    lines = f.readlines()
-	#    print(lines)
-	#    f.close()
-
+			colormapfile = os.path.join(os.getcwd(), colormap)
+			if ( os.path.isfile(colormapfile) == False ):
+				colormapfile=os.path.join(os.environ.get('HOME', os.path.expanduser('~')), colormap)
+				if ( os.path.isfile(colormapfile) == False ):
+					print("找不到", colormap)
 	return colormapfile
 
 
