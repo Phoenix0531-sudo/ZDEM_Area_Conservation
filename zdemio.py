@@ -310,11 +310,12 @@ def GetColormapFile(colormap,VBOXscriptDir):
 		colormapfile=colormap
 		#print("1:", colormapfile)
 		if ( os.path.isfile(colormapfile) == False ):
-			colormapfile=DataDir+colormap
-			if ( os.path.isfile(colormapfile) == False ):
-				colormapfile=os.path.join(os.environ['HOME'],colormap)
-				if ( os.path.isfile(colormapfile) == False ):
-					print("找不到", colormap)
+					# search relative to cwd (legacy scripts used a free DataDir name)
+					colormapfile = os.path.join(os.getcwd(), colormap)
+					if ( os.path.isfile(colormapfile) == False ):
+						colormapfile=os.path.join(os.environ.get('HOME', os.path.expanduser('~')), colormap)
+						if ( os.path.isfile(colormapfile) == False ):
+							print("找不到", colormap)
 
 	#print("colormap:", colormapfile)
 	#with open(colormapfile) as f:
