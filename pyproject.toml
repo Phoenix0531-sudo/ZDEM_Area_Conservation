@@ -19,8 +19,8 @@ dev = ["pytest>=8.0", "ruff>=0.6"]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["zdem_area_conservation*"]
+[tool.setuptools]
+py-modules = ["Area_Conservation", "zdemio", "zdemplot"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

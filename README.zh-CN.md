@@ -1,65 +1,58 @@
 # ZDEM Area Conservation
 
-**面向 ZDEM 颜色组的面积守恒 / 三角网格分析**
+用于二维 ZDEM 模拟颗粒子集面积估算的 Python 工具：对指定颜色颗粒进行 Delaunay 三角剖分，过滤长边三角形，并比较不同模拟帧的面积。
 
-[English](README.md) | [中文](README.zh-CN.md)
+[English](README.md) · [许可证](LICENSE)
 
-![CI](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml/badge.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![示例图](docs/screenshots/preview.png)
 
-对 ZDEM 颗粒包做**面积守恒**检查的批处理工具：读 `.dat` 帧（`zdemio`），对选定 **color#** 建三角网、出图并汇总面积趋势。
+## 方法
 
-`data/`、`data1/`、`figures/` 下的完整实验数据**仅本地**（已 ignore）。CI 使用 `samples/` 中的合成小帧。
+程序从每个 ZDEM `.dat` 文件中提取颗粒坐标、半径和颜色编号，按颜色筛选颗粒（默认全部颜色），再进行 Delaunay 三角剖分。仅保留三条边长度均不超过 `k × 颗粒平均半径` 的三角形，并将保留三角形的面积求和；默认阈值因子 `k = 3.0`。
 
-## 为什么做这个
+程序按文件名中的数字排序比较各帧面积。趋势图横轴为归一化的文件编号；百分比模式以首个有效帧面积为基准，显示相对变化。该方法是数值模拟的后处理，**不能单独作为物理实测或面积守恒已经成立的证明**；坐标单位、输入来源和参数适用性需根据具体数据确认。
 
-盐构造 / 颗粒论文需要证明跟踪区域在变形下面积守恒。自动化三角剖分与统计优于零散旧脚本。
+## 环境与安装
 
-## 功能
-
-- `Area_Conservation.py` — 主分析入口（getopt）  
-- `zdemio` / `zdemplot`  
-- 论文向 `fig*.py`  
-- `samples/` 供测试的小 `.dat`  
-
-## 安装
+需要 Python 3.10 或更高版本。运行依赖为 NumPy、SciPy 和 Matplotlib；`requirements.txt` 还包含测试用的 pytest。
 
 ```bash
-git clone https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation.git
-cd ZDEM_Area_Conservation
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python Area_Conservation.py -h
 ```
 
-## 使用
+## 数据与运行
+
+- `samples/` 是两帧用于测试的**人工构造迷你样例**，不是实验数据，详见 [samples/README.md](samples/README.md)。
+- `data/` 不纳入 Git，可保存本地模拟数据和输出；运行前请另行保留原始数据。
+
+将兼容的 `.dat` 文件放入项目根目录的 `data/`，例如：
 
 ```bash
-python Area_Conservation.py --help
+python Area_Conservation.py --dir=data --colors=all --threshold=3.0 --plot-area-type=percentage
 ```
+
+`--colors=7,8` 可筛选颜色编号，`--xmax`、`--ymax` 可调整网格图坐标范围，`--plot-area-type=raw|percentage|normalized` 可选择面积趋势显示方式。其他选项见 `python Area_Conservation.py -h`。默认绘图范围和单位标注应根据实际数据核实后再用于发表。
+
+**输出与注意事项：**颗粒文本文件（`*_particles.txt`）及 `area_trend.pdf`、`.svg` 写入项目根目录的 `data/`；原始和过滤后三角网的 PDF、SVG 写入所选输入目录。同名文件可能被覆盖。当前实现即使指定其他 `--dir`，仍会将颗粒中间文件和趋势图写入根目录 `data/`，但从所选输入目录读取颗粒文本。因此，在该路径问题修复前，完整流程应使用默认 `data/`；直接对 `samples/` 或其他目录运行不能作为可靠的端到端示例。程序在终端输出颗粒数量及面积比较，默认不导出面积汇总表。
+
+## 测试与复现
 
 ```bash
-pytest tests/test_samples_dat.py tests/test_zdemio.py
+python -m pytest -q tests
 ```
 
-## 数据策略
+现有测试覆盖样例解析、辅助函数和基础导入，不代表已验证特定模拟的科学准确性。报告研究结果时，应记录源数据、模拟工况、颜色筛选、阈值、软件环境和单位。完整本地模拟数据未包含在仓库中。
 
-| 路径 | 是否进 git |
-|------|------------|
-| `samples/` | 是（合成小样） |
-| `data/`、`data1/`、`figures/` | 否，仅本地 |
+## 目录结构
 
-## 相关 ZDEM 工具
+| 路径 | 用途 |
+| --- | --- |
+| `Area_Conservation.py` | 面积分析与绘图入口 |
+| `zdemio.py`、`zdemplot.py` | ZDEM 数据解析和绘图辅助模块 |
+| `samples/`、`tests/` | 合成样例和自动化测试 |
+| `data/` | 本地模拟数据与输出，不纳入 Git |
 
-| 仓库 | 作用 |
-|------|------|
-| [ZDEM_ParticleTracker](https://github.com/Phoenix0531-sudo/ZDEM_ParticleTracker) | 交互式颗粒追踪 + VisPy 真实半径渲染 |
-| [ZDEM_Salt_Kinematics](https://github.com/Phoenix0531-sudo/ZDEM_Salt_Kinematics) | 盐体几何/运动学提取与出图 |
-| [ZDEM_Area_Conservation](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation) | 面积守恒 / 三角网格分析 |
-| [ZDEM_Bond_Fracture](https://github.com/Phoenix0531-sudo/ZDEM_Bond_Fracture) | 粘结损伤序列 + 桌面/CLI |
-| [ZDEM_Damage_Thresholds](https://github.com/Phoenix0531-sudo/ZDEM_Damage_Thresholds) | 损伤阈值与应变–能量图 |
-| [ZDEM_DFN](https://github.com/Phoenix0531-sudo/ZDEM_DFN) | ZDEM 离散裂隙网络生成 |
-| [ZDEM_Model_Editor](https://github.com/Phoenix0531-sudo/ZDEM_Model_Editor) | 模型文件可视化编辑 |
-| [ZDEM_Archiver](https://github.com/Phoenix0531-sudo/ZDEM_Archiver) | 大体量模拟结果归档清理 |
-| [ZDEM3D_WEB](https://github.com/Phoenix0531-sudo/ZDEM3D_WEB) | CAE 云端界面（Django + React + VTK.js） |
-## 许可证
+## 引用与许可
 
-MIT。可在署名前提下商用。见 [LICENSE](LICENSE)。
+本仓库目前没有确定的论文或引用元数据。用于研究时，请在相关论文可用后引用论文，并记录所使用的仓库版本。代码采用 [MIT 许可证](LICENSE)。
