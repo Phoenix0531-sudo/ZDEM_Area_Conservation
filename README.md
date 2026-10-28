@@ -1,67 +1,58 @@
 # ZDEM Area Conservation
 
-**Particle-subset area conservation for ZDEM — Delaunay / matplotlib triangulation, color# filtering, paper figure scripts, sample-first CI.**
+A Python tool for estimating the area occupied by a selected subset of particles in two-dimensional ZDEM simulation frames. It constructs a Delaunay triangulation, filters long edges, and tracks the resulting area across frames.
 
-[English](README.md) | [中文](README.zh-CN.md)
+[中文说明](README.zh-CN.md) · [License](LICENSE)
 
-[![CI](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml/badge.svg)](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Example visualization](docs/screenshots/preview.png)
 
-Batch analysis of ZDEM `.dat` frames: select particles by **color group**, build a triangular mesh, track **area statistics** under deformation. Automates what used to be ad-hoc MATLAB leftovers.
+## Method
 
-## Preview
+For each ZDEM `.dat` frame, the program extracts particle coordinates, radii and color identifiers. It selects particles by color (all colors by default), constructs a Delaunay triangulation, and retains triangles whose three edge lengths are each at most `k × mean particle radius`. The reported area is the sum of retained triangle areas. The default threshold factor `k` is 3.0.
 
-![ZDEM Area Conservation](docs/screenshots/preview.png)
+Areas are compared across frames ordered by the number in their filenames. The trend plot uses a normalized frame-number axis; its percentage mode reports change relative to the first valid frame. This is a numerical post-processing method, not a physical measurement or proof of conservation by itself. Coordinate units, input provenance and suitable parameters must be established for each dataset.
 
-## Main entry
+## Requirements and installation
 
-`Area_Conservation.py` (getopt CLI):
+Python 3.10 or later is required. Runtime dependencies are NumPy, SciPy and Matplotlib; `requirements.txt` also includes pytest for testing.
 
-- Reads ZDEM dumps through `zdemio` / plots via `zdemplot`
-- Builds triangulation (`matplotlib.tri.Triangulation` / `scipy.spatial.Delaunay`)
-- Filters by color# / group conventions used in lab packs
-- Writes mesh figures + area trend stats
-- Uses `Agg` backend for headless figure export
-- Auto-detects Chinese fonts for paper labels when available
+```bash
+python -m pip install -r requirements.txt
+python Area_Conservation.py -h
+```
 
-Supporting figure scripts: `fig1_*.py` … `fig8_areatrend.py` for algorithm flow, benchmarks, complex models, filtering, area trends.
+## Data and usage
 
-## Samples vs personal data
+- `samples/` contains two **synthetic**, minimal ZDEM-like frames for tests. They are not experimental evidence; see [samples/README.md](samples/README.md).
+- `data/` is ignored by Git and may contain local simulation data and outputs. Preserve original data separately before running the program.
+
+Place compatible `.dat` frames in the project-root `data/` directory. Run, for example:
+
+```bash
+python Area_Conservation.py --dir=data --colors=all --threshold=3.0 --plot-area-type=percentage
+```
+
+Use `--colors=7,8` to select color identifiers, `--xmax` and `--ymax` to adjust mesh plot limits, and `--plot-area-type=raw|percentage|normalized` to choose the trend display. Run `python Area_Conservation.py -h` for the full option list. The default plot limits and axis unit labels should be checked against the dataset before publication.
+
+**Output and safety:** particle text files (`*_particles.txt`) and `area_trend.pdf`/`.svg` are written under the project-root `data/`; triangulation PDFs and SVGs are written under the selected input directory. Existing files with the same names may be overwritten. The current implementation writes intermediate particle files and trend plots to `data/` even when `--dir` points elsewhere, while reading particle text files from the selected directory. Therefore, use the default `data/` directory for the complete workflow until that path handling is corrected; running directly on `samples/` or another directory is not a reliable end-to-end example. Standard output includes particle counts and area comparisons; no area table is exported by default.
+
+## Validation and reproducibility
+
+```bash
+python -m pytest -q tests
+```
+
+The tests cover sample parsing, helper functions and basic imports; they do not establish scientific accuracy or validate results for a particular simulation. Record the source data, simulation conditions, color selection, threshold, software environment and units when reporting results. Full local simulation data are not included in the repository.
+
+## Repository structure
 
 | Path | Purpose |
-|------|---------|
-| `samples/*.dat` | Tiny frames for CI (`all_0000001000.dat`, …) |
-| `data/`, `data1/`, full `figures/` | **Local only** — do not force-push multi-GB dumps |
+| --- | --- |
+| `Area_Conservation.py` | Analysis and plotting command-line entry point |
+| `zdemio.py`, `zdemplot.py` | ZDEM data parsing and plotting helpers |
+| `samples/`, `tests/` | Synthetic fixtures and automated tests |
+| `data/` | Local, Git-ignored simulation data and generated outputs |
 
-## Install
+## Citation and license
 
-```bash
-git clone https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation.git
-cd ZDEM_Area_Conservation
-pip install -r requirements.txt
-# or uv sync
-```
-
-Python **>= 3.10**. Deps: numpy, scipy, matplotlib.
-
-## Run
-
-```bash
-python Area_Conservation.py --help
-pytest tests/
-```
-
-Point CLI flags at `samples/` first; keep personal campaign data outside git.
-
-## Related
-
-ParticleTracker · Salt Kinematics · Bond Fracture · DFN · Model Editor · Archiver
-
-## Scope
-
-- **In:** color-subset meshes, area conservation stats, paper figure generators, sample CI
-- **Out:** interactive VisPy viewer (ParticleTracker), cloud storage of full simulations
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+No publication or citation metadata has been established in this repository. If you use the code in research, cite an associated publication when available and record the repository revision used. The code is distributed under the [MIT License](LICENSE).

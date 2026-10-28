@@ -40,3 +40,6 @@ figures/
 __pycache__/
 
 .venv/
+
+.skills/
+.pi/
