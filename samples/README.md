@@ -13,6 +13,6 @@ Local heavy dirs are **gitignored**:
 
 - `data/` — local ZDEM exports and analysis figures
 
-The current CLI writes intermediate particle files and area plots to the project-root `data/` even when `--dir` specifies another directory. Use `data/` for the complete workflow and preserve original data separately; see the main README for details.
+Run the sample with `python Area_Conservation.py --dir=samples --output-dir=results --threshold=10`. The output directory must be new; see the main README for details.
 
 Do **not** commit full simulation outputs. The files in `samples/` are synthetic fixtures.

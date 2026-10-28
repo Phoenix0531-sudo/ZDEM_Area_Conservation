@@ -8,6 +8,12 @@ import os
 import sys
 import getopt
 import re
+import csv
+import json
+import hashlib
+import platform
+from pathlib import Path
+import scipy
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -25,6 +31,7 @@ except Exception:
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import zdemio
 import zdemplot
+from area_geometry import create_triangulation, filter_triangles, calculate_triangle_areas
 
 # 强制刷新 matplotlib 字体缓存，确保系统已安装字体被正确识别
 matplotlib.font_manager._load_fontmanager(try_read_cache=False)
@@ -79,6 +86,7 @@ PLOT_AREA_TREND = 'raw'         # 面积趋势图类型: 'raw', 'percentage', 'n
 def usage(software_name):
     print(f"用法: python {software_name} [选项]")
     print("  --dir=<目录>           指定包含 .dat 文件的目录 (默认: data)")
+    print("  --output-dir=<目录>    新建结果目录（默认: results，不覆盖已有目录）")
     print("  --colors=<颜色编号,...>  指定要提取的颗粒颜色编号 (逗号分隔, 默认: all，支持 all 或 * 表示全部颜色)")
     print("  --threshold=<浮点数>     指定边长阈值因子 (默认: 3.0)")
     print("  --threshold-percent=<浮点数> 面积趋势图阈值百分比，控制绿色安全带与红/绿阈值线位置 (默认: 5.0)")
@@ -117,8 +125,8 @@ def read_surface_particles(filename):
         if not particles_data:
             warnings.warn(f"在 '{filename}' 中没有找到有效的颗粒数据。", UserWarning)
             return None, None, None
-        coords = np.array([[p[0], p[1]] for p in particles_data], dtype=np.float32)
-        radii = np.array([[p[2]] for p in particles_data], dtype=np.float32)
+        coords = np.array([[p[0], p[1]] for p in particles_data], dtype=np.float64)
+        radii = np.array([[p[2]] for p in particles_data], dtype=np.float64)
         colors = np.array([[p[3]] for p in particles_data], dtype=np.int32)
         return coords, radii, colors
     except FileNotFoundError:
@@ -128,67 +136,7 @@ def read_surface_particles(filename):
         print(f"读取文件 '{filename}' 时发生未知错误: {e}")
         return None, None, None
 
-def create_triangulation(coords):
-    """创建三角网格划分"""
-    if coords is None or coords.shape[0] < 3:
-        print("颗粒数量不足，无法创建三角网格 (至少需要3个颗粒)。")
-        return None
-    if coords.shape[0] > 2:
-        unique_coords = np.unique(coords, axis=0)
-        if unique_coords.shape[0] < 3:
-            warnings.warn("警告: 颗粒点存在大量重复或几乎共线，三角剖分可能不准确或失败。", UserWarning)
-            return None
-    try:
-        delaunay = Delaunay(coords)
-        tri = Triangulation(coords[:, 0], coords[:, 1], triangles=delaunay.simplices)
-        if len(tri.triangles) == 0:
-            warnings.warn("警告: 没有生成任何三角形。", UserWarning)
-            return None
-        return tri
-    except Exception as e:
-        print(f"创建三角网格时出错: {e}")
-        return None
-
-def filter_triangles(tri, coords, radii, threshold_factor):
-    """过滤边长大于阈值的三角形。"""
-    if tri is None or coords is None or radii is None or len(radii) == 0:
-        warnings.warn("无效的输入数据，无法过滤三角形。", UserWarning)
-        return None
-    triangles = tri.triangles
-    avg_radius = np.mean(radii)
-    threshold = threshold_factor * avg_radius
-    triangle_coords = coords[triangles]
-    p1 = triangle_coords[:, 0, :]
-    p2 = triangle_coords[:, 1, :]
-    p3 = triangle_coords[:, 2, :]
-    edge1 = np.linalg.norm(p1 - p2, axis=1)
-    edge2 = np.linalg.norm(p2 - p3, axis=1)
-    edge3 = np.linalg.norm(p3 - p1, axis=1)
-    mask = (edge1 <= threshold) & (edge2 <= threshold) & (edge3 <= threshold)
-    filtered_triangles = triangles[mask]
-    if len(filtered_triangles) > 0:
-        new_tri = Triangulation(tri.x, tri.y, filtered_triangles)
-        return new_tri
-    else:
-        warnings.warn(f"警告: 过滤后没有剩余三角形 (阈值 = {threshold:.2f})。", UserWarning)
-        return None
-
-def calculate_triangle_areas(tri, coords):
-    """计算三角形面积并求和"""
-    if tri is None or coords is None or tri.triangles.shape[0] == 0:
-        return 0.0
-    triangles = tri.triangles
-    p1 = coords[triangles[:, 0]]
-    p2 = coords[triangles[:, 1]]
-    p3 = coords[triangles[:, 2]]
-    vec1 = p2 - p1
-    vec2 = p3 - p1
-    cross_product_z = vec1[:, 0] * vec2[:, 1] - vec1[:, 1] * vec2[:, 0]
-    areas = 0.5 * np.abs(cross_product_z)
-    total_area = np.sum(areas)
-    return float(total_area)
-
-def export_particles_txt(coords, radii, colors, original_dat_file_path):
+def export_particles_txt(coords, radii, colors, original_dat_file_path, output_dir=None):
     """根据原始 dat 文件名，在 data 目录下生成对应的 _particles.txt 文件"""
     if coords is None or radii is None or colors is None or coords.shape[0] == 0:
         warnings.warn(f"没有有效的颗粒数据可供导出到文本文件。", UserWarning)
@@ -196,7 +144,7 @@ def export_particles_txt(coords, radii, colors, original_dat_file_path):
     if not original_dat_file_path:
         warnings.warn(f"未提供原始 .dat 文件路径，无法确定输出文件名。", UserWarning)
         return
-    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), DEFAULT_DATA_DIR)
+    data_dir = output_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), DEFAULT_DATA_DIR)
     os.makedirs(data_dir, exist_ok=True)
     base_name = os.path.splitext(os.path.basename(original_dat_file_path))[0]
     output_file = os.path.join(data_dir, f'{base_name}_particles.txt')
@@ -210,14 +158,14 @@ def export_particles_txt(coords, radii, colors, original_dat_file_path):
                 y = coords[i, 1]
                 radius = radii[i, 0]
                 color = int(colors[i, 0])
-                f.write(f"{i}\t{x:.2f}\t{y:.2f}\t{radius:.2f}\t{color}\n")
+                f.write(f"{i}\t{x:.17g}\t{y:.17g}\t{radius:.17g}\t{color}\n")
             f.write("-" * 50 + "\n")
             f.write(f"表面颗粒总数: {coords.shape[0]}\n")
         print(f"颗粒信息已保存到 '{output_file}'。")
     except Exception as e:
         print(f"写入文件 '{output_file}' 失败: {e}")
 
-def dat_to_particles_txt_batch(data_dir):
+def dat_to_particles_txt_batch(data_dir, output_dir=None):
     """批量将指定 data 目录下的所有 .dat 文件导出为 _particles.txt"""
     data_dir_abs = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_dir)
     if not os.path.exists(data_dir_abs):
@@ -232,20 +180,21 @@ def dat_to_particles_txt_batch(data_dir):
         try:
             result = zdemio.read_data(dat_file_path)
             if result is None:
-                warnings.warn(f"'{file_name}' 解析失败，zdemio.read_data 返回 None。", UserWarning)
-                continue
+                raise ValueError('解析器未返回数据')
             if len(result) == 5:
                 _WALL, BALL, _CONTACT, _BOND, _CurrentStep = result
             elif len(result) == 6:
                 _WALL, BALL, _CONTACT, _BOND, _CurrentStep, _ = result
             else:
-                warnings.warn(f"'{file_name}' 解析返回值数量异常: {len(result)}。跳过。", UserWarning)
-                continue
+                raise ValueError(f'解析返回值数量异常: {len(result)}')
             _, BALLxyN2_raw, BALLRadN1_raw, BALLColorN1_raw = zdemio.BallListStrToNumpyArray(BALL)
+            if (not np.isfinite(BALLxyN2_raw).all() or not np.isfinite(BALLRadN1_raw).all()
+                    or np.any(BALLRadN1_raw <= 0)):
+                raise ValueError('颗粒坐标须为有限数，半径须为有限正数')
             BALLColorN1_reshaped = BALLColorN1_raw.reshape(-1, 1)
-            export_particles_txt(BALLxyN2_raw, BALLRadN1_raw, BALLColorN1_reshaped, dat_file_path)
+            export_particles_txt(BALLxyN2_raw, BALLRadN1_raw, BALLColorN1_reshaped, dat_file_path, output_dir)
         except Exception as e:
-            print(f"处理 '{file_name}' 时出错: {e}")
+            raise RuntimeError(f"处理 '{file_name}' 时出错: {e}") from e
 
 def process_multiple_files(data_dir, color_list, threshold_factor):
     """处理data目录下的所有_particles.txt文件，进行分析和绘图"""
@@ -385,6 +334,9 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
         warnings.warn(f"没有有效的三角网格数据，跳过绘制网格线到 '{filename}'。", UserWarning)
 
     # ── L型坐标轴（仅左+下） + 标尺分度 ──
+    if (np.any(coords[:, 0] - radii.reshape(-1) < 0) or np.any(coords[:, 1] - radii.reshape(-1) < 0)
+            or np.any(coords[:, 0] + radii.reshape(-1) > xmax) or np.any(coords[:, 1] + radii.reshape(-1) > ymax)):
+        warnings.warn('绘图坐标范围未覆盖全部颗粒，请检查 --xmax、--ymax 和负坐标。', UserWarning)
     ax.set_xlim(0, xmax)
     ax.set_ylim(0, ymax)
 
@@ -405,20 +357,10 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
 
     # 坐标轴标签（如果 filtered 参数为 True 说明是过滤后版本）
     postfix = '（过滤后）' if filtered else '（初始剖分）'
-    ax.set_xlabel('X 距离 (m)', fontsize=13)
-    ax.set_ylabel('Y 深度 (m)', fontsize=13)
+    ax.set_xlabel('X 坐标（原始单位）', fontsize=13)
+    ax.set_ylabel('Y 坐标（原始单位）', fontsize=13)
 
-    # ── 比例尺（右下角） ──
-    x_range = xmax - 0
-    scale_bar_length = x_range * 0.15  # 比例尺长 = 画幅的15%
-    scale_y = ymax * 0.04
-    scale_x_start = xmax * 0.78
-    scale_text_y = scale_y * 0.5
-    ax.plot([scale_x_start, scale_x_start + scale_bar_length],
-            [scale_y, scale_y], 'k-', linewidth=2.0)
-    ax.text(scale_x_start + scale_bar_length / 2, scale_text_y,
-            f'{scale_bar_length/1000:.0f} km', ha='center', va='bottom',
-            fontsize=10, color='black')
+    ax.set_aspect('equal', adjustable='box')
 
     # ── 保存 PDF + SVG ──
     base = os.path.splitext(filename)[0]
@@ -431,7 +373,7 @@ def save_triangulation_plot(coords, radii, colors, color_list, tri, filename, fi
     plt.close(fig)
     print(f"{'过滤后' if filtered else '原始'}三角网格图已保存到 '{pdf_path}' 与 '{svg_path}'。")
 
-def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshold_percent=5.0, paper_style=False, hint_band_percent=None):
+def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshold_percent=5.0, paper_style=False, hint_band_percent=None, output_dir=None):
     """绘制面积趋势曲线，输出 PDF + SVG。"""
     if not results:
         print("没有可用于绘制面积趋势图的结果。")
@@ -469,7 +411,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
 
     if plot_type == 'raw':
         y_data = areas
-        y_label = '面积 (m²)'
+        y_label = '面积（坐标单位²）'
     elif plot_type == 'normalized':
         min_a, max_a = min(areas), max(areas)
         if max_a != min_a:
@@ -536,11 +478,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
     ax.tick_params(axis='both', which='minor', direction='in',
                    width=0.6, length=3)
 
-    try:
-        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-    except NameError:
-        data_dir = 'data'
-
+    data_dir = output_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     os.makedirs(data_dir, exist_ok=True)
     base_path = os.path.join(data_dir, f'area_trend')
     pdf_path = base_path + '.pdf'
@@ -555,6 +493,7 @@ def plot_area_trend(results, plot_type='percentage', y_axis_margin=1.0, threshol
 
 def main():
     data_dir = DEFAULT_DATA_DIR
+    output_dir = 'results'
     color_list_to_extract = COLOR_TO_EXTRACT
     threshold_factor = THRESHOLD_FACTOR
     threshold_percent = 5.0
@@ -568,17 +507,23 @@ def main():
     ymax = 25000.0  # 默认值
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",\
-        longopts=['dir=','colors=','threshold=','threshold-percent=','hint-band-percent=','y-margin=','plot-original-tri=','plot-filtered-tri=', 'plot-area-type=', 'paper-style=', 'xmax=', 'ymax='])
+        longopts=['dir=','output-dir=','colors=','threshold=','threshold-percent=','hint-band-percent=','y-margin=','plot-original-tri=','plot-filtered-tri=', 'plot-area-type=', 'paper-style=', 'xmax=', 'ymax='])
     except getopt.GetoptError as err:
         print(f"命令行参数错误: {err}")
         usage(sys.argv[0])
         sys.exit(2)
+    if args:
+        sys.exit(f'不支持的位置参数: {args}')
     for op, value in opts:
+        if op in ('--plot-original-tri', '--plot-filtered-tri', '--paper-style') and value.lower() not in ('true', 'false'):
+            sys.exit(f'{op} 必须为 true 或 false')
         if op == "-h":
             usage(sys.argv[0])
             sys.exit()
         elif op == "--dir":
             data_dir = value
+        elif op == "--output-dir":
+            output_dir = value
         elif op == "--colors":
             v = value.strip().lower()
             if v in ["all", "*", ""]:
@@ -645,20 +590,55 @@ def main():
                 print("错误: --ymax 参数需要浮点数，例如: --ymax=15.0。")
                 usage(sys.argv[0])
                 sys.exit(2)
+    numeric = {'threshold': threshold_factor, 'threshold-percent': threshold_percent,
+               'y-margin': y_axis_margin, 'xmax': xmax, 'ymax': ymax}
+    if hint_band_percent is not None:
+        numeric['hint-band-percent'] = hint_band_percent
+    for name, number in numeric.items():
+        if not np.isfinite(number) or number < 0 or (name in ('threshold', 'xmax', 'ymax') and number == 0):
+            sys.exit(f'无效参数 --{name}: {number}')
     print("--- 开始处理ZDEM颗粒分布与面积守恒分析 ---")
     print(f"数据目录: {data_dir}")
     print(f"提取颜色: {'全部颜色' if color_list_to_extract is None else color_list_to_extract}")
     print(f"阈值因子: {threshold_factor}")
-    dat_to_particles_txt_batch(data_dir)
-    results = process_multiple_files(data_dir=data_dir, color_list=color_list_to_extract, threshold_factor=threshold_factor)
+    input_dir = Path(data_dir).resolve()
+    input_files = sorted(input_dir.glob('*.dat'))
+    if not input_files:
+        sys.exit(f'没有找到输入数据: {input_dir}')
+    input_hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in input_files}
+    output_path = Path(output_dir).resolve()
+    try:
+        output_path.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        sys.exit(f'输出目录已存在，不会覆盖: {output_path}')
+    particles_dir = output_path / 'particles'
+    dat_to_particles_txt_batch(str(input_dir), str(particles_dir))
+    if any(hashlib.sha256(p.read_bytes()).hexdigest() != input_hashes[p.name] for p in input_files):
+        sys.exit('处理期间输入文件发生变化，结果不可靠。')
+    results = process_multiple_files(data_dir=str(particles_dir), color_list=color_list_to_extract, threshold_factor=threshold_factor)
+    if len(results) != len(input_files):
+        sys.exit(f'输入 {len(input_files)} 帧，但仅成功分析 {len(results)} 帧；结果不完整。')
     compare_results(results)
-    plot_area_trend(results, plot_type=plot_area_type, y_axis_margin=y_axis_margin, threshold_percent=threshold_percent, paper_style=paper_style_flag, hint_band_percent=hint_band_percent)
-    data_dir_abs = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_dir)
-    triangulation_dir = os.path.join(data_dir_abs, '1_triangulation_plot')
-    filtered_triangulation_dir = os.path.join(data_dir_abs, '2_filtered_triangulation_plot')
-    if not results:
-        warnings.warn("没有可用于绘图的结果，跳过图片保存。", UserWarning)
-        return
+    ordered = sorted(results, key=lambda r: int(re.findall(r'\d+', r['file_name'])[-1]) if re.findall(r'\d+', r['file_name']) else 0)
+    base_area = ordered[0]['area']
+    with (output_path / 'area_results.csv').open('w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['particle_file', 'step', 'particle_count', 'area', 'relative_change_percent'])
+        for r in ordered:
+            change = (r['area'] / base_area - 1) * 100 if base_area else None
+            numbers = re.findall(r'\d+', r['file_name'])
+            writer.writerow([r['file_name'], int(numbers[-1]) if numbers else '', r['total_particles'], r['area'], change])
+    metadata = {'input_directory': str(input_dir), 'input_files': [{'name': p.name, 'sha256': input_hashes[p.name]} for p in input_files],
+                'colors': color_list_to_extract, 'threshold_factor': threshold_factor, 'threshold_percent': threshold_percent,
+                'hint_band_percent': hint_band_percent, 'plot_area_type': plot_area_type, 'xmax': xmax, 'ymax': ymax,
+                'y_axis_margin': y_axis_margin, 'paper_style': paper_style_flag,
+                'plot_original_tri': plot_original_tri_flag, 'plot_filtered_tri': plot_filtered_tri_flag,
+                'python': platform.python_version(), 'numpy': np.__version__, 'scipy': scipy.__version__, 'matplotlib': matplotlib.__version__,
+                'coordinate_units': 'unspecified'}
+    (output_path / 'run_metadata.json').write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding='utf-8')
+    plot_area_trend(results, plot_type=plot_area_type, y_axis_margin=y_axis_margin, threshold_percent=threshold_percent, paper_style=paper_style_flag, hint_band_percent=hint_band_percent, output_dir=str(output_path))
+    triangulation_dir = os.path.join(output_path, '1_triangulation_plot')
+    filtered_triangulation_dir = os.path.join(output_path, '2_filtered_triangulation_plot')
     for result in results:
         file_name = result.get('file_name')
         coords = result.get('coords')

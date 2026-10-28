@@ -25,6 +25,8 @@ venv/
 
 # Project specific
 data/
+results/
+copyright/
 res/
 example/
 Accuracy Validation/

@@ -28,15 +28,17 @@ python Area_Conservation.py -h
 - `samples/` 是两帧用于测试的**人工构造迷你样例**，不是实验数据，详见 [samples/README.md](samples/README.md)。
 - `data/` 不纳入 Git，可保存本地模拟数据和输出；运行前请另行保留原始数据。
 
-将兼容的 `.dat` 文件放入项目根目录的 `data/`，例如：
+可先用合成样例运行（样例间距较大，需使用阈值 10）：
 
 ```bash
-python Area_Conservation.py --dir=data --colors=all --threshold=3.0 --plot-area-type=percentage
+python Area_Conservation.py --dir=samples --output-dir=results --colors=all --threshold=10 --plot-area-type=percentage
 ```
+
+对自己的数据指定 `--dir` 和新的 `--output-dir`；阈值应根据实际数据选择。
 
 `--colors=7,8` 可筛选颜色编号，`--xmax`、`--ymax` 可调整网格图坐标范围，`--plot-area-type=raw|percentage|normalized` 可选择面积趋势显示方式。其他选项见 `python Area_Conservation.py -h`。默认绘图范围和单位标注应根据实际数据核实后再用于发表。
 
-**输出与注意事项：**颗粒文本文件（`*_particles.txt`）及 `area_trend.pdf`、`.svg` 写入项目根目录的 `data/`；原始和过滤后三角网的 PDF、SVG 写入所选输入目录。同名文件可能被覆盖。当前实现即使指定其他 `--dir`，仍会将颗粒中间文件和趋势图写入根目录 `data/`，但从所选输入目录读取颗粒文本。因此，在该路径问题修复前，完整流程应使用默认 `data/`；直接对 `samples/` 或其他目录运行不能作为可靠的端到端示例。程序在终端输出颗粒数量及面积比较，默认不导出面积汇总表。
+**输出与注意事项：**程序要求输出目录不存在，以避免覆盖；所有输出均写入该目录，包括 `particles/` 中间文件、`area_results.csv` 面积表、`run_metadata.json` 输入文件哈希及参数、面积趋势图和三角网图。读取和计算使用双精度；坐标单位尚需根据数据来源确认。运行失败时可能留下部分输出目录，请检查后另选目录重试。
 
 ## 测试与复现
 
@@ -44,13 +46,13 @@ python Area_Conservation.py --dir=data --colors=all --threshold=3.0 --plot-area-
 python -m pytest -q tests
 ```
 
-现有测试覆盖样例解析、辅助函数和基础导入，不代表已验证特定模拟的科学准确性。为便于复现，应记录源数据、模拟工况、坐标单位、筛选颜色、阈值因子、绘图设置、Python 与依赖版本，以及仓库版本（`git rev-parse HEAD`）。程序目前不会自动导出这些设置或面积汇总表。完整本地模拟数据未包含在仓库中，因此仅凭合成样例不能复现基于这些数据获得的结果。
+现有测试覆盖样例解析、辅助函数和基础导入，不代表已验证特定模拟的科学准确性。为便于复现，应记录源数据、模拟工况、坐标单位、筛选颜色、阈值因子、绘图设置、Python 与依赖版本，以及仓库版本（`git rev-parse HEAD`）。程序会输出面积汇总表和部分运行参数，但模拟工况、单位和仓库版本仍需研究者另行记录。完整本地模拟数据未包含在仓库中，因此仅凭合成样例不能复现基于这些数据获得的结果。
 
 ## 目录结构
 
 | 路径 | 用途 |
 | --- | --- |
-| `Area_Conservation.py` | 面积分析与绘图入口 |
+| `Area_Conservation.py`、`area_geometry.py` | 分析入口与三角剖分、面积计算 |
 | `zdemio.py`、`zdemplot.py` | ZDEM 数据解析和绘图辅助模块 |
 | `samples/`、`tests/` | 合成样例和自动化测试 |
 | `data/` | 本地模拟数据与输出，不纳入 Git |

@@ -28,15 +28,17 @@ python Area_Conservation.py -h
 - `samples/` contains two **synthetic**, minimal ZDEM-like frames for tests. They are not experimental evidence; see [samples/README.md](samples/README.md).
 - `data/` is ignored by Git and may contain local simulation data and outputs. Preserve original data separately before running the program.
 
-Place compatible `.dat` frames in the project-root `data/` directory. Run, for example:
+Run the synthetic example (its large particle spacing requires a threshold of 10):
 
 ```bash
-python Area_Conservation.py --dir=data --colors=all --threshold=3.0 --plot-area-type=percentage
+python Area_Conservation.py --dir=samples --output-dir=results --colors=all --threshold=10 --plot-area-type=percentage
 ```
+
+For your own data, choose the input directory, a new output directory and a threshold appropriate to the dataset.
 
 Use `--colors=7,8` to select color identifiers, `--xmax` and `--ymax` to adjust mesh plot limits, and `--plot-area-type=raw|percentage|normalized` to choose the trend display. Run `python Area_Conservation.py -h` for the full option list. The default plot limits and axis unit labels should be checked against the dataset before publication.
 
-**Output and safety:** particle text files (`*_particles.txt`) and `area_trend.pdf`/`.svg` are written under the project-root `data/`; triangulation PDFs and SVGs are written under the selected input directory. Existing files with the same names may be overwritten. The current implementation writes intermediate particle files and trend plots to `data/` even when `--dir` points elsewhere, while reading particle text files from the selected directory. Therefore, use the default `data/` directory for the complete workflow until that path handling is corrected; running directly on `samples/` or another directory is not a reliable end-to-end example. Standard output includes particle counts and area comparisons; no area table is exported by default.
+**Output and safety:** the output directory must not exist, preventing accidental overwrite. It contains intermediate files in `particles/`, `area_results.csv`, `run_metadata.json` with input hashes and parameters, area trend plots and triangulation plots. Coordinates and radii are retained in double precision; coordinate units must be confirmed from the source data. A failed run may leave a partial output directory; inspect it and choose another output path when retrying.
 
 ## Validation and reproducibility
 
@@ -44,13 +46,13 @@ Use `--colors=7,8` to select color identifiers, `--xmax` and `--ymax` to adjust 
 python -m pytest -q tests
 ```
 
-The tests cover sample parsing, helper functions and basic imports; they do not establish scientific accuracy or validate results for a particular simulation. For reproducibility, record the source data and simulation conditions, coordinate units, selected colors, threshold factor, plot settings, Python and dependency versions, and repository revision (`git rev-parse HEAD`). The current implementation does not export these settings or an area table automatically. Full local simulation data are not included in the repository, so the synthetic fixtures alone cannot reproduce results derived from them.
+The tests cover sample parsing, helper functions and basic imports; they do not establish scientific accuracy or validate results for a particular simulation. For reproducibility, record the source data and simulation conditions, coordinate units, selected colors, threshold factor, plot settings, Python and dependency versions, and repository revision (`git rev-parse HEAD`). The program exports an area table and some parameters; simulation conditions, units and repository revision still need to be recorded separately. Full local simulation data are not included in the repository, so the synthetic fixtures alone cannot reproduce results derived from them.
 
 ## Repository structure
 
 | Path | Purpose |
 | --- | --- |
-| `Area_Conservation.py` | Analysis and plotting command-line entry point |
+| `Area_Conservation.py`, `area_geometry.py` | Analysis entry point and triangulation/area calculations |
 | `zdemio.py`, `zdemplot.py` | ZDEM data parsing and plotting helpers |
 | `samples/`, `tests/` | Synthetic fixtures and automated tests |
 | `data/` | Local, Git-ignored simulation data and generated outputs |
