@@ -1,68 +1,58 @@
 # ZDEM Area Conservation
 
-**Area conservation / triangulation analysis for ZDEM color groups**
+A Python tool for estimating the area occupied by a selected subset of particles in two-dimensional ZDEM simulation frames. It constructs a Delaunay triangulation, filters long edges, and tracks the resulting area across frames.
 
-[English](README.md) | [中文](README.zh-CN.md)
+[中文说明](README.zh-CN.md) · [License](LICENSE)
 
-![CI](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation/actions/workflows/ci.yml/badge.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Example visualization](docs/screenshots/preview.png)
 
-Batch tools for **area conservation** checks on ZDEM particle packs: read `.dat` frames (`zdemio`), build triangulations for selected **color#** groups, plot meshes, and summarize area trends.
+## Method
 
-Full experiment dumps under `data/`, `data1/`, `figures/` stay **local-only** (gitignored). CI uses tiny synthetic frames in `samples/`.
+For each ZDEM `.dat` frame, the program extracts particle coordinates, radii and color identifiers. It selects particles by color (all colors by default), constructs a Delaunay triangulation, and retains triangles whose three edge lengths are each at most `k × mean particle radius`. The reported area is the sum of retained triangle areas. The default threshold factor `k` is 3.0.
 
-## Why this exists
+Areas are compared across frames ordered by the number in their filenames. The trend plot uses a normalized frame-number axis; its percentage mode reports change relative to the first valid frame. This is a numerical post-processing method, not a physical measurement or proof of conservation by itself. Coordinate units, input provenance and suitable parameters must be established for each dataset.
 
-Salt / granular papers need evidence that tracked regions conserve area under deformation. Automating triangulation + stats beats ad-hoc MATLAB leftovers.
+## Requirements and installation
 
-## Features
-
-- `Area_Conservation.py` — main analysis entry (getopt CLI)
-- `zdemio` / `zdemplot` IO and plotting helpers
-- Figure scripts `fig*.py` for paper-style panels
-- `samples/` mini `.dat` for tests without multi-GB dumps
-
-## Install
+Python 3.10 or later is required. Runtime dependencies are NumPy, SciPy and Matplotlib; `requirements.txt` also includes pytest for testing.
 
 ```bash
-git clone https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation.git
-cd ZDEM_Area_Conservation
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python Area_Conservation.py -h
 ```
 
-## Usage
+## Data and usage
+
+- `samples/` contains two **synthetic**, minimal ZDEM-like frames for tests. They are not experimental evidence; see [samples/README.md](samples/README.md).
+- `data/` is ignored by Git and may contain local simulation data and outputs. Preserve original data separately before running the program.
+
+Place compatible `.dat` frames in the project-root `data/` directory. Run, for example:
 
 ```bash
-python Area_Conservation.py --help
-# point at a directory of all_*.dat frames; see script options for color filters
+python Area_Conservation.py --dir=data --colors=all --threshold=3.0 --plot-area-type=percentage
 ```
 
-Sample parse test:
+Use `--colors=7,8` to select color identifiers, `--xmax` and `--ymax` to adjust mesh plot limits, and `--plot-area-type=raw|percentage|normalized` to choose the trend display. Run `python Area_Conservation.py -h` for the full option list. The default plot limits and axis unit labels should be checked against the dataset before publication.
+
+**Output and safety:** particle text files (`*_particles.txt`) and `area_trend.pdf`/`.svg` are written under the project-root `data/`; triangulation PDFs and SVGs are written under the selected input directory. Existing files with the same names may be overwritten. The current implementation writes intermediate particle files and trend plots to `data/` even when `--dir` points elsewhere, while reading particle text files from the selected directory. Therefore, use the default `data/` directory for the complete workflow until that path handling is corrected; running directly on `samples/` or another directory is not a reliable end-to-end example. Standard output includes particle counts and area comparisons; no area table is exported by default.
+
+## Validation and reproducibility
 
 ```bash
-pytest tests/test_samples_dat.py tests/test_zdemio.py
+python -m pytest -q tests
 ```
 
-## Data policy
+The tests cover sample parsing, helper functions and basic imports; they do not establish scientific accuracy or validate results for a particular simulation. Record the source data, simulation conditions, color selection, threshold, software environment and units when reporting results. Full local simulation data are not included in the repository.
 
-| Path | In git? |
-|------|---------|
-| `samples/` | Yes (tiny synthetic) |
-| `data/`, `data1/`, `figures/` | No — local only |
+## Repository structure
 
-## Related ZDEM tools
+| Path | Purpose |
+| --- | --- |
+| `Area_Conservation.py` | Analysis and plotting command-line entry point |
+| `zdemio.py`, `zdemplot.py` | ZDEM data parsing and plotting helpers |
+| `samples/`, `tests/` | Synthetic fixtures and automated tests |
+| `data/` | Local, Git-ignored simulation data and generated outputs |
 
-| Repo | Role |
-|------|------|
-| [ZDEM_ParticleTracker](https://github.com/Phoenix0531-sudo/ZDEM_ParticleTracker) | Interactive particle tracking + VisPy true-radius render |
-| [ZDEM_Salt_Kinematics](https://github.com/Phoenix0531-sudo/ZDEM_Salt_Kinematics) | Salt geometry / kinematics extraction & plots |
-| [ZDEM_Area_Conservation](https://github.com/Phoenix0531-sudo/ZDEM_Area_Conservation) | Area-conservation / triangulation analysis |
-| [ZDEM_Bond_Fracture](https://github.com/Phoenix0531-sudo/ZDEM_Bond_Fracture) | Bond damage series + desktop / CLI |
-| [ZDEM_Damage_Thresholds](https://github.com/Phoenix0531-sudo/ZDEM_Damage_Thresholds) | Damage thresholds & strain–energy plots |
-| [ZDEM_DFN](https://github.com/Phoenix0531-sudo/ZDEM_DFN) | Discrete fracture network generator for ZDEM |
-| [ZDEM_Model_Editor](https://github.com/Phoenix0531-sudo/ZDEM_Model_Editor) | Model file visual editor |
-| [ZDEM_Archiver](https://github.com/Phoenix0531-sudo/ZDEM_Archiver) | Purge / archive bulky simulation dumps |
-| [ZDEM3D_WEB](https://github.com/Phoenix0531-sudo/ZDEM3D_WEB) | CAE cloud UI (Django + React + VTK.js) |
-## License
+## Citation and license
 
-MIT. Free for commercial use with attribution. See [LICENSE](LICENSE).
+No publication or citation metadata has been established in this repository. If you use the code in research, cite an associated publication when available and record the repository revision used. The code is distributed under the [MIT License](LICENSE).

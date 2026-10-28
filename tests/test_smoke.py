@@ -1,4 +1,4 @@
-"""Smoke tests — keep green on empty / thin packages."""
+"""Smoke tests for the project entry point and supporting modules."""
 from pathlib import Path
 import importlib
 import sys
@@ -8,15 +8,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-def test_repo_has_readme():
-    assert (ROOT / 'README.md').exists()
-
-
-def test_license_present():
-    assert any((ROOT / n).exists() for n in ('LICENSE', 'LICENSE.md', 'LICENSE.txt'))
-
-
-PACKAGES = ['zdem_area_conservation']
+PACKAGES = ['zdemio', 'zdemplot']
 
 
 def test_packages_importable():

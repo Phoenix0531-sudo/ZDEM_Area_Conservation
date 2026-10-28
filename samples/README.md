@@ -11,13 +11,8 @@ Tiny synthetic ZDEM-like `.dat` frames used by unit tests and quick demos.
 
 Local heavy dirs are **gitignored**:
 
-- `data/`, `data1/` — full ZDEM exports (hundreds of MB)
-- `figures/` — rendered PDF/SVG from paper figures
+- `data/` — local ZDEM exports and analysis figures
 
-Point the CLI at your own export:
+The current CLI writes intermediate particle files and area plots to the project-root `data/` even when `--dir` specifies another directory. Use `data/` for the complete workflow and preserve original data separately; see the main README for details.
 
-```bash
-python Area_Conservation.py --dir=/path/to/your/zdem/data
-```
-
-Do **not** commit full simulation outputs. Keep demos on `samples/`.
+Do **not** commit full simulation outputs. The files in `samples/` are synthetic fixtures.
