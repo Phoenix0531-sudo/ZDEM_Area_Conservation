@@ -10,6 +10,8 @@ A Python tool for estimating the area occupied by a selected subset of particles
 
 For each ZDEM `.dat` frame, the program extracts particle coordinates, radii and color identifiers. It selects particles by color (all colors by default), constructs a Delaunay triangulation, and retains triangles whose three edge lengths are each at most `k × mean particle radius`. The reported area is the sum of retained triangle areas. The default threshold factor `k` is 3.0.
 
+For selected particle centers $p_i$ and radii $r_i$, let $\bar r$ be their mean radius and $T_k$ the Delaunay triangles for which every edge length is at most $k\bar r$. The reported estimate is $A_k = \sum_{t\in T_k} \operatorname{area}(t)$. It represents the retained triangle area, not the sum of particle disk areas; changing the threshold or selected colors can change the result.
+
 Areas are compared across frames ordered by the number in their filenames. The trend plot uses a normalized frame-number axis; its percentage mode reports change relative to the first valid frame. This is a numerical post-processing method, not a physical measurement or proof of conservation by itself. Coordinate units, input provenance and suitable parameters must be established for each dataset.
 
 ## Requirements and installation
@@ -42,7 +44,7 @@ Use `--colors=7,8` to select color identifiers, `--xmax` and `--ymax` to adjust 
 python -m pytest -q tests
 ```
 
-The tests cover sample parsing, helper functions and basic imports; they do not establish scientific accuracy or validate results for a particular simulation. Record the source data, simulation conditions, color selection, threshold, software environment and units when reporting results. Full local simulation data are not included in the repository.
+The tests cover sample parsing, helper functions and basic imports; they do not establish scientific accuracy or validate results for a particular simulation. For reproducibility, record the source data and simulation conditions, coordinate units, selected colors, threshold factor, plot settings, Python and dependency versions, and repository revision (`git rev-parse HEAD`). The current implementation does not export these settings or an area table automatically. Full local simulation data are not included in the repository, so the synthetic fixtures alone cannot reproduce results derived from them.
 
 ## Repository structure
 
